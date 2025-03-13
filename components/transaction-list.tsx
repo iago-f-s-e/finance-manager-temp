@@ -55,8 +55,7 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const categoriesStore = useFinancialStore((state) => state.categories)
-
-  const categories = useMemo(() => categoriesStore, [categoriesStore])
+  const categories = useMemo(() => categoriesStore.filter((c) => c.type === type), [categoriesStore, type])
 
 
   // Filter transactions
@@ -86,8 +85,8 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
     setIsDialogOpen(true)
   }
 
-  const handleUpdate = (updatedTransaction: Transaction, updateAll: boolean) => {
-    onUpdate(updatedTransaction, updateAll)
+  const handleUpdate = (updatedTransaction: Transaction, updateAll?: boolean) => {
+    onUpdate(updatedTransaction, Boolean(updateAll))
     setIsDialogOpen(false)
     setEditTransaction(null)
   }
@@ -222,6 +221,7 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
                         Editar
                       </DropdownMenuItem>
                       {transaction.isRecurring && (
+                        // TODO: lidar com handleEdit no caso do updateAllRecurrences = true
                         <DropdownMenuItem onClick={() => handleEdit({ ...transaction, updateAllRecurrences: true })}>
                           <RepeatIcon className="mr-2 h-4 w-4" />
                           Editar todas recorrências

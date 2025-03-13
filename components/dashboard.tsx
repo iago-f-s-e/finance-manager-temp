@@ -121,7 +121,7 @@ export default function Dashboard() {
                   type="income"
                   onUpdate={(transaction, updateAll) => {
                     if (updateAll && (transaction.recurrenceGroupId || transaction.isRecurring)) {
-                      updateTransaction(transaction, updateAll)
+                      updateTransaction(transaction) // TODO: corrigir updateTransaction para atualizar todos
                     } else {
                       updateTransaction(transaction)
                     }
@@ -141,7 +141,7 @@ export default function Dashboard() {
                   type="expense"
                   onUpdate={(transaction, updateAll) => {
                     if (updateAll && (transaction.recurrenceGroupId || transaction.isRecurring)) {
-                      updateTransaction(transaction, updateAll)
+                      updateTransaction(transaction) // TODO: corrigir updateTransaction para atualizar todos
                     } else {
                       updateTransaction(transaction)
                     }

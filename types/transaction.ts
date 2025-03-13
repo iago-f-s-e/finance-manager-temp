@@ -14,6 +14,7 @@ export interface Transaction {
   recurrenceCount?: number
   isPartOfRecurrence?: boolean
   recurrenceGroupId?: string
+  updateAllRecurrences?: boolean
   createdAt: Date
 }
 

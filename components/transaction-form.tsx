@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import {useState, useEffect, useMemo} from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -23,14 +23,13 @@ import { RECURRENCE_TYPES } from "@/lib/constants"
 import { CurrencyInput } from "@/components/currency-input"
 import { CategoryDialog } from "@/components/category-dialog"
 import { useFinancialStore } from "@/lib/store"
+import {handleInputMoneyMask, handleRemoveMoneyMask} from "@/lib/masks";
 
 const transactionFormSchema = z.object({
   name: z.string().min(2, {
     message: "O nome deve ter pelo menos 2 caracteres.",
   }),
-  value: z.number().positive({
-    message: "O valor deve ser maior que zero.",
-  }),
+  value: z.string(),
   date: z.date(),
   category: z.string(),
   description: z.string().optional(),
@@ -51,12 +50,13 @@ interface TransactionFormProps {
 export function TransactionForm({ type, transaction, onSubmit, onCancel }: TransactionFormProps) {
   const [isRecurring, setIsRecurring] = useState(transaction?.isRecurring || false)
   const [updateAllRecurrences, setUpdateAllRecurrences] = useState(false)
-  const categories = useFinancialStore((state) => state.categories.filter((c) => c.type === type))
+  const categoriesStore = useFinancialStore((state) => state.categories)
+  const categories = useMemo(() => categoriesStore.filter((c) => c.type === type), [categoriesStore, type])
   const addCategory = useFinancialStore((state) => state.addCategory)
 
   const defaultValues: Partial<TransactionFormValues> = {
     name: transaction?.name || "",
-    value: transaction?.value || 0,
+    value: handleInputMoneyMask(transaction?.value ?? 0),
     date: transaction?.date ? new Date(transaction.date) : new Date(),
     category: transaction?.category || "",
     description: transaction?.description || "",
@@ -75,7 +75,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
     if (transaction) {
       form.reset({
         name: transaction.name,
-        value: transaction.value,
+        value: handleInputMoneyMask(transaction.value),
         date: new Date(transaction.date),
         category: transaction.category,
         description: transaction.description || "",
@@ -103,7 +103,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
       id: transaction?.id || crypto.randomUUID(),
       type,
       name: data.name,
-      value: data.value,
+      value: handleRemoveMoneyMask(data.value),
       date: data.date,
       category: data.category,
       description: data.description || "",
@@ -152,7 +152,14 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
               <FormItem>
                 <FormLabel>Valor</FormLabel>
                 <FormControl>
-                  <CurrencyInput value={field.value} onChange={field.onChange} placeholder="0,00" />
+                  <Input
+                    {...field}
+                    placeholder="R$ 0,00"
+                    onChange={(e) => {
+                      e.target.value = handleInputMoneyMask(e.target.value);
+                      field.onChange(e);
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -180,7 +187,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
                     </FormControl>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                    <Calendar mode="single" selected={field.value} onDayClick={field.onChange} initialFocus />
                   </PopoverContent>
                 </Popover>
                 <FormMessage />

@@ -22,15 +22,20 @@ import type { Category } from "@/types/category"
 import { RECURRENCE_TYPES } from "@/lib/constants"
 import { CategoryDialog } from "@/components/category-dialog"
 import { useFinancialStore } from "@/lib/store"
-import {handleInputMoneyMask, handleRemoveMoneyMask} from "@/lib/masks";
+import { handleInputMoneyMask, handleRemoveMoneyMask } from "@/lib/mask"
 
 const transactionFormSchema = z.object({
   name: z.string().min(2, {
     message: "O nome deve ter pelo menos 2 caracteres.",
   }),
-  value: z.string(),
+  value: z.string().min(1, {
+    message: "O valor deve ser maior que zero.",
+  }),
   date: z.date(),
   category: z.string(),
+  walletId: z.string({
+    required_error: "Selecione uma carteira",
+  }),
   description: z.string().optional(),
   isRecurring: z.boolean().default(false),
   recurrenceType: z.string().optional(),
@@ -51,6 +56,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
   const [updateAllRecurrences, setUpdateAllRecurrences] = useState(false)
   const categoriesStore = useFinancialStore((state) => state.categories)
   const categories = useMemo(() => categoriesStore.filter((c) => c.type === type), [categoriesStore, type])
+  const wallets = useFinancialStore((state) => state.wallets)
   const addCategory = useFinancialStore((state) => state.addCategory)
 
   const defaultValues: Partial<TransactionFormValues> = {
@@ -58,6 +64,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
     value: handleInputMoneyMask(transaction?.value ?? 0),
     date: transaction?.date ? new Date(transaction.date) : new Date(),
     category: transaction?.category || "",
+    walletId: transaction?.walletId || (wallets.length > 0 ? wallets[0].id : ""),
     description: transaction?.description || "",
     isRecurring: transaction?.isRecurring || false,
     recurrenceType: transaction?.recurrenceType || "monthly",
@@ -77,6 +84,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
         value: handleInputMoneyMask(transaction.value),
         date: new Date(transaction.date),
         category: transaction.category,
+        walletId: transaction.walletId,
         description: transaction.description || "",
         isRecurring: transaction.isRecurring || false,
         recurrenceType: transaction.recurrenceType || "monthly",
@@ -106,6 +114,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
       value: handleRemoveMoneyMask(data.value),
       date: data.date,
       category: data.category,
+      walletId: data.walletId,
       description: data.description || "",
       isRecurring: data.isRecurring,
       recurrenceType: data.isRecurring ? (data.recurrenceType as RecurrenceType) : undefined,
@@ -156,8 +165,8 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
                     {...field}
                     placeholder="R$ 0,00"
                     onChange={(e) => {
-                      e.target.value = handleInputMoneyMask(e.target.value);
-                      field.onChange(e);
+                      e.target.value = handleInputMoneyMask(e.target.value)
+                      field.onChange(e)
                     }}
                   />
                 </FormControl>
@@ -187,7 +196,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
                     </FormControl>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={field.value} onDayClick={field.onChange} initialFocus />
+                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
                   </PopoverContent>
                 </Popover>
                 <FormMessage />
@@ -226,6 +235,34 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="walletId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Carteira</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma carteira" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {wallets.map((wallet) => (
+                    <SelectItem key={wallet.id} value={wallet.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="h-3 w-3 rounded-full" style={{ backgroundColor: wallet.color }} />
+                        {wallet.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}

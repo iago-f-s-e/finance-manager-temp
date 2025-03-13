@@ -23,10 +23,12 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Transaction, TransactionFilters } from "@/types/transaction"
 import type { Category } from "@/types/category"
+import type { Wallet } from "@/types/wallet"
 import {
   groupTransactionsByMonth,
   calculateMonthlyBalance,
   groupTransactionsByCategory,
+  groupTransactionsByWallet,
   formatCurrency,
 } from "@/lib/financial-utils"
 import { CHART_TYPES } from "@/lib/constants"
@@ -36,10 +38,11 @@ interface FinancialChartProps {
   incomes: Transaction[]
   expenses: Transaction[]
   categories: Category[]
+  wallets: Wallet[]
   filters?: TransactionFilters
 }
 
-export function FinancialChart({ incomes, expenses, categories, filters }: FinancialChartProps) {
+export function FinancialChart({ incomes, expenses, categories, wallets = [], filters }: FinancialChartProps) {
   const [chartType, setChartType] = useState("line")
   const [chartView, setChartView] = useState("overview")
 
@@ -64,10 +67,20 @@ export function FinancialChart({ incomes, expenses, categories, filters }: Finan
     }
   }, [incomes, expenses, categories])
 
-  // Remover o renderTooltip personalizado que pode estar causando o problema
-  // Substituir por um Tooltip padrão do Recharts
+  // Memoize wallet data
+  const walletData = useMemo(() => {
+    return {
+      incomes: groupTransactionsByWallet(incomes, wallets),
+      expenses: groupTransactionsByWallet(expenses, wallets),
+      balance: wallets.map((wallet) => ({
+        id: wallet.id,
+        name: wallet.name,
+        value: wallet.balance,
+        color: wallet.color,
+      })),
+    }
+  }, [incomes, expenses, wallets])
 
-  // Substituir a função renderTooltip por:
   // Usar React.memo para evitar renderizações desnecessárias do tooltip
   const TooltipContent = React.memo(({ label, payload }: { label: string; payload: any[] }) => (
     <div className="bg-background p-2 border rounded-md shadow-sm">
@@ -87,21 +100,83 @@ export function FinancialChart({ incomes, expenses, categories, filters }: Finan
     return null
   }
 
-  // Substituir a função renderCategoryTooltip por:
-  const renderCategoryTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-background p-2 border rounded-md shadow-sm">
-          <p className="font-medium">{payload[0].name}</p>
-          <p style={{ color: payload[0].payload.color || "#000" }}>{formatCurrency(payload[0].value)}</p>
-        </div>
-      )
-    }
-    return null
-  }
-
   // Render the appropriate chart based on type and view
   const renderChart = () => {
+    // Handle wallet charts
+    if (chartView === "wallet-balance" || chartView === "wallet-income" || chartView === "wallet-expense") {
+      let data
+
+      if (chartView === "wallet-balance") {
+        data = walletData.balance
+      } else if (chartView === "wallet-income") {
+        data = walletData.incomes
+      } else {
+        data = walletData.expenses
+      }
+
+      // Skip rendering if no data
+      if (!data || data.length === 0) {
+        return (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-muted-foreground">Nenhum dado disponível para exibição</p>
+          </div>
+        )
+      }
+
+      if (chartType === "pie") {
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={120}
+                fill="#8884d8"
+                label={(entry) => `${entry.name}: ${formatCurrency(entry.value)}`}
+              >
+                {data.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={entry.color || `#${Math.floor(Math.random() * 16777215).toString(16)}`}
+                  />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        )
+      }
+
+      return (
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip formatter={(value) => formatCurrency(value as number)} />
+            <Legend />
+            <Bar
+              dataKey="value"
+              name={chartView === "wallet-balance" ? "Saldo" : chartView === "wallet-income" ? "Entradas" : "Saídas"}
+              fill={chartView === "wallet-balance" ? "#3b82f6" : chartView === "wallet-income" ? "#10b981" : "#ef4444"}
+              radius={[4, 4, 0, 0]}
+            >
+              {data.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={entry.color || `#${Math.floor(Math.random() * 16777215).toString(16)}`}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      )
+    }
+
     // Handle category charts
     if (chartView === "category-income" || chartView === "category-expense") {
       const data = chartView === "category-income" ? categoryData.incomes : categoryData.expenses
@@ -338,13 +413,16 @@ export function FinancialChart({ incomes, expenses, categories, filters }: Finan
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Tabs value={chartView} onValueChange={setChartView} className="w-full sm:w-auto">
-          <TabsList className="grid grid-cols-2 sm:grid-cols-6">
+          <TabsList className="grid grid-cols-3 sm:grid-cols-9">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
             <TabsTrigger value="income-expense">Entradas/Saídas</TabsTrigger>
             <TabsTrigger value="balance">Saldo</TabsTrigger>
             <TabsTrigger value="accumulated">Acumulado</TabsTrigger>
             <TabsTrigger value="category-income">Categorias (E)</TabsTrigger>
             <TabsTrigger value="category-expense">Categorias (S)</TabsTrigger>
+            <TabsTrigger value="wallet-balance">Carteiras (Saldo)</TabsTrigger>
+            <TabsTrigger value="wallet-income">Carteiras (E)</TabsTrigger>
+            <TabsTrigger value="wallet-expense">Carteiras (S)</TabsTrigger>
           </TabsList>
         </Tabs>
 

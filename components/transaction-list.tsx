@@ -13,6 +13,7 @@ import {
   SortAscIcon,
   SortDescIcon,
   TrashIcon,
+  WalletIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -53,10 +54,12 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
+  const [selectedWallet, setSelectedWallet] = useState<string>("")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
 
   const categoriesStore = useFinancialStore((state) => state.categories)
   const categories = useMemo(() => categoriesStore.filter((c) => c.type === type), [categoriesStore, type])
+  const wallets = useFinancialStore((state) => state.wallets)
 
   // Filter transactions
   const filteredTransactions = useMemo(() => {
@@ -71,9 +74,14 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
         return false
       }
 
+      // Filter by wallet
+      if (selectedWallet && selectedWallet !== "all" && transaction.walletId !== selectedWallet) {
+        return false
+      }
+
       return true
     })
-  }, [transactions, searchTerm, selectedCategory])
+  }, [transactions, searchTerm, selectedCategory, selectedWallet])
 
   // Sort transactions
   const sortedTransactions = useMemo(() => {
@@ -107,6 +115,16 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
   const getCategoryColor = (categoryValue: string) => {
     const category = categories.find((cat) => cat.value === categoryValue)
     return category?.color || "#6b7280"
+  }
+
+  const getWalletName = (walletId: string) => {
+    const wallet = wallets.find((w) => w.id === walletId)
+    return wallet ? wallet.name : "Carteira Desconhecida"
+  }
+
+  const getWalletColor = (walletId: string) => {
+    const wallet = wallets.find((w) => w.id === walletId)
+    return wallet?.color || "#6b7280"
   }
 
   const toggleSortOrder = () => {
@@ -144,6 +162,23 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
             </SelectContent>
           </Select>
 
+          <Select value={selectedWallet} onValueChange={setSelectedWallet}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Carteira" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as carteiras</SelectItem>
+              {wallets.map((wallet) => (
+                <SelectItem key={wallet.id} value={wallet.id}>
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: wallet.color }} />
+                    {wallet.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Button variant="outline" size="icon" onClick={toggleSortOrder}>
             {sortOrder === "desc" ? <SortDescIcon className="h-4 w-4" /> : <SortAscIcon className="h-4 w-4" />}
           </Button>
@@ -158,7 +193,7 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
                 Nenhuma {type === "income" ? "entrada" : "saída"} encontrada
               </p>
               <p className="text-xs text-muted-foreground">
-                {searchTerm || selectedCategory
+                {searchTerm || selectedCategory || selectedWallet
                   ? "Tente ajustar os filtros"
                   : `Adicione uma nova ${type === "income" ? "entrada" : "saída"} para começar`}
               </p>
@@ -192,16 +227,28 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
                         </Badge>
                       )}
                     </div>
-                    <Badge
-                      variant="secondary"
-                      className="mt-1"
-                      style={{
-                        backgroundColor: `${getCategoryColor(transaction.category)}20`,
-                        color: getCategoryColor(transaction.category),
-                      }}
-                    >
-                      {getCategoryLabel(transaction.category)}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      <Badge
+                        variant="secondary"
+                        style={{
+                          backgroundColor: `${getCategoryColor(transaction.category)}20`,
+                          color: getCategoryColor(transaction.category),
+                        }}
+                      >
+                        {getCategoryLabel(transaction.category)}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className="flex items-center gap-1"
+                        style={{
+                          borderColor: getWalletColor(transaction.walletId),
+                          color: getWalletColor(transaction.walletId),
+                        }}
+                      >
+                        <WalletIcon className="h-3 w-3" />
+                        {getWalletName(transaction.walletId)}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">

@@ -7,6 +7,7 @@ import { FinancialChart } from "@/components/financial-chart"
 import { TransactionList } from "@/components/transaction-list"
 import { TransactionForm } from "@/components/transaction-form"
 import { ImportExport } from "@/components/import-export"
+import { WalletList } from "@/components/wallet-list"
 import { useFinancialStore } from "@/lib/store"
 import { formatCurrency } from "@/lib/financial-utils"
 import { ArrowDownIcon, ArrowUpIcon, BarChart3Icon, DollarSignIcon, ListFilterIcon } from "lucide-react"
@@ -15,7 +16,8 @@ import { useRouter } from "next/navigation"
 
 export default function Dashboard() {
   const router = useRouter()
-  const { incomes, expenses, categories, addTransaction, updateTransaction, deleteTransaction } = useFinancialStore()
+  const { incomes, expenses, categories, wallets, addTransaction, updateTransaction, deleteTransaction } =
+    useFinancialStore()
 
   const [totals, setTotals] = useState({
     totalIncome: 0,
@@ -104,13 +106,15 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      <WalletList />
+
       <Card className="col-span-4">
         <CardHeader>
           <CardTitle>Visão Geral Financeira</CardTitle>
           <CardDescription>Acompanhe suas entradas, saídas e saldo ao longo do tempo</CardDescription>
         </CardHeader>
         <CardContent className="pl-2">
-          <FinancialChart incomes={incomes} expenses={expenses} categories={categories} />
+          <FinancialChart incomes={incomes} expenses={expenses} categories={categories} wallets={wallets} />
         </CardContent>
       </Card>
 

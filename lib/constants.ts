@@ -1,5 +1,6 @@
 import type { Category } from "@/types/category"
 import type { RecurrenceType } from "@/types/transaction"
+import type { Wallet } from "@/types/wallet"
 
 export const INITIAL_CATEGORIES: Category[] = [
   // Income categories
@@ -43,6 +44,39 @@ export const INITIAL_CATEGORIES: Category[] = [
   { id: "other_expense", type: "expense", value: "other_expense", label: "Outros", color: "#6b7280", isDefault: true },
 ]
 
+export const INITIAL_WALLETS: Wallet[] = [
+  {
+    id: "main",
+    name: "Conta Principal",
+    description: "Conta principal para gerenciar despesas do dia a dia",
+    balance: 0,
+    color: "#3b82f6",
+    icon: "wallet",
+    isDefault: true,
+    createdAt: new Date(),
+  },
+  {
+    id: "savings",
+    name: "Reserva de Emergência",
+    description: "Fundo para emergências",
+    balance: 0,
+    color: "#10b981",
+    icon: "shield",
+    isDefault: true,
+    createdAt: new Date(),
+  },
+  {
+    id: "investments",
+    name: "Investimentos",
+    description: "Recursos para investimentos de longo prazo",
+    balance: 0,
+    color: "#8b5cf6",
+    icon: "trending-up",
+    isDefault: true,
+    createdAt: new Date(),
+  },
+]
+
 export const RECURRENCE_TYPES: { value: RecurrenceType; label: string }[] = [
   { value: "daily", label: "Diária" },
   { value: "weekly", label: "Semanal" },
@@ -57,5 +91,22 @@ export const CHART_TYPES = [
   { value: "area", label: "Área" },
   { value: "pie", label: "Pizza" },
   { value: "composed", label: "Composto (Linha e Barra)" },
+]
+
+export const WALLET_ICONS = [
+  { value: "wallet", label: "Carteira" },
+  { value: "credit-card", label: "Cartão de Crédito" },
+  { value: "piggy-bank", label: "Cofrinho" },
+  { value: "landmark", label: "Banco" },
+  { value: "shield", label: "Segurança" },
+  { value: "briefcase", label: "Trabalho" },
+  { value: "home", label: "Casa" },
+  { value: "car", label: "Carro" },
+  { value: "plane", label: "Viagem" },
+  { value: "heart", label: "Saúde" },
+  { value: "graduation-cap", label: "Educação" },
+  { value: "gift", label: "Presente" },
+  { value: "shopping-bag", label: "Compras" },
+  { value: "trending-up", label: "Investimentos" },
 ]
 

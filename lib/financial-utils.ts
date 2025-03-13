@@ -1,5 +1,6 @@
 import type { Transaction, TransactionFilters } from "@/types/transaction"
 import type { Category } from "@/types/category"
+import type { Wallet } from "@/types/wallet"
 import { format, isAfter, isBefore, parseISO, startOfMonth, endOfMonth } from "date-fns"
 
 export function calculateTotals(incomes: Transaction[], expenses: Transaction[]) {
@@ -89,6 +90,34 @@ export function groupTransactionsByCategory(transactions: Transaction[], categor
     .filter((item) => item.value > 0)
 }
 
+export function groupTransactionsByWallet(transactions: Transaction[], wallets: Wallet[]) {
+  const result = (wallets ?? []).reduce(
+    (acc, wallet) => {
+      acc[wallet.id] = 0
+      return acc
+    },
+    {} as Record<string, number>,
+  )
+
+  transactions.forEach((transaction) => {
+    if (result[transaction.walletId] !== undefined) {
+      result[transaction.walletId] += transaction.value
+    }
+  })
+
+  return Object.entries(result)
+    .map(([walletId, value]) => {
+      const wallet = wallets.find((w) => w.id === walletId)
+      return {
+        id: walletId,
+        name: wallet?.name || "Carteira Desconhecida",
+        value,
+        color: wallet?.color,
+      }
+    })
+    .filter((item) => item.value > 0)
+}
+
 export function filterTransactions(transactions: Transaction[], filters: TransactionFilters): Transaction[] {
   return transactions.filter((transaction) => {
     const date = new Date(transaction.date)
@@ -104,6 +133,11 @@ export function filterTransactions(transactions: Transaction[], filters: Transac
 
     // Filter by categories
     if (filters.categories && filters.categories.length > 0 && !filters.categories.includes(transaction.category)) {
+      return false
+    }
+
+    // Filter by wallets
+    if (filters.walletIds && filters.walletIds.length > 0 && !filters.walletIds.includes(transaction.walletId)) {
       return false
     }
 

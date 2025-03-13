@@ -1,4 +1,4 @@
-export type TransactionType = "income" | "expense"
+export type TransactionType = "income" | "expense" | "transfer"
 export type RecurrenceType = "daily" | "weekly" | "biweekly" | "monthly" | "yearly"
 
 export interface Transaction {
@@ -8,6 +8,7 @@ export interface Transaction {
   value: number
   date: Date
   category: string
+  walletId: string
   description: string
   isRecurring?: boolean
   recurrenceType?: RecurrenceType
@@ -15,6 +16,7 @@ export interface Transaction {
   isPartOfRecurrence?: boolean
   recurrenceGroupId?: string
   updateAllRecurrences?: boolean
+  transferId?: string
   createdAt: Date
 }
 
@@ -22,6 +24,7 @@ export interface TransactionFilters {
   startDate?: Date
   endDate?: Date
   categories?: string[]
+  walletIds?: string[]
   searchTerm?: string
 }
 

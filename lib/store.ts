@@ -3,12 +3,15 @@ import { persist } from "zustand/middleware"
 import { addDays, addMonths, addWeeks, addYears } from "date-fns"
 import type { Transaction } from "@/types/transaction"
 import type { Category } from "@/types/category"
-import { INITIAL_CATEGORIES } from "@/lib/constants"
+import type { Wallet, WalletTransfer } from "@/types/wallet"
+import { INITIAL_CATEGORIES, INITIAL_WALLETS } from "@/lib/constants"
 
 interface FinancialState {
   incomes: Transaction[]
   expenses: Transaction[]
   categories: Category[]
+  wallets: Wallet[]
+  transfers: WalletTransfer[]
 
   // Transaction actions
   addTransaction: (transaction: Transaction) => void
@@ -20,8 +23,21 @@ interface FinancialState {
   updateCategory: (category: Category) => void
   deleteCategory: (id: string) => void
 
+  // Wallet actions
+  addWallet: (wallet: Wallet) => void
+  updateWallet: (wallet: Wallet) => void
+  deleteWallet: (id: string) => void
+  transferBetweenWallets: (transfer: WalletTransfer) => void
+  updateWalletBalance: (walletId: string, newBalance: number) => void
+
   // Import/Export
-  importData: (data: { incomes: Transaction[]; expenses: Transaction[]; categories: Category[] }) => void
+  importData: (data: {
+    incomes: Transaction[]
+    expenses: Transaction[]
+    categories: Category[]
+    wallets: Wallet[]
+    transfers: WalletTransfer[]
+  }) => void
   clearAllData: () => void
 }
 
@@ -31,8 +47,29 @@ export const useFinancialStore = create<FinancialState>()(
       incomes: [],
       expenses: [],
       categories: INITIAL_CATEGORIES,
+      wallets: INITIAL_WALLETS,
+      transfers: [],
 
       addTransaction: (transaction) => {
+        // Atualizar o saldo da carteira
+        const { wallets } = get()
+        const wallet = wallets.find((w) => w.id === transaction.walletId)
+
+        if (wallet) {
+          // Atualizar o saldo da carteira com base no tipo de transação
+          const updatedWallets = wallets.map((w) => {
+            if (w.id === wallet.id) {
+              return {
+                ...w,
+                balance: transaction.type === "income" ? w.balance + transaction.value : w.balance - transaction.value,
+              }
+            }
+            return w
+          })
+
+          set({ wallets: updatedWallets })
+        }
+
         if (transaction.isRecurring && transaction.recurrenceCount && transaction.recurrenceType) {
           const recurringTransactions = generateRecurringTransactions(transaction)
 
@@ -51,6 +88,65 @@ export const useFinancialStore = create<FinancialState>()(
       },
 
       updateTransaction: (transaction, updateAll = false) => {
+        // Encontrar a transação original para ajustar o saldo da carteira
+        let originalTransaction: Transaction | undefined
+
+        if (transaction.type === "income") {
+          originalTransaction = get().incomes.find((t) => t.id === transaction.id)
+        } else {
+          originalTransaction = get().expenses.find((t) => t.id === transaction.id)
+        }
+
+        if (originalTransaction) {
+          const { wallets } = get()
+          let updatedWallets = [...wallets]
+
+          // Se a carteira mudou, ajustar o saldo de ambas as carteiras
+          if (originalTransaction.walletId !== transaction.walletId) {
+            // Reverter o efeito na carteira original
+            updatedWallets = updatedWallets.map((w) => {
+              if (w.id === originalTransaction!.walletId) {
+                return {
+                  ...w,
+                  balance:
+                    transaction.type === "income"
+                      ? w.balance - originalTransaction!.value
+                      : w.balance + originalTransaction!.value,
+                }
+              }
+              return w
+            })
+
+            // Aplicar o efeito na nova carteira
+            updatedWallets = updatedWallets.map((w) => {
+              if (w.id === transaction.walletId) {
+                return {
+                  ...w,
+                  balance:
+                    transaction.type === "income" ? w.balance + transaction.value : w.balance - transaction.value,
+                }
+              }
+              return w
+            })
+          }
+          // Se apenas o valor mudou, ajustar a diferença
+          else if (originalTransaction.value !== transaction.value) {
+            const difference = transaction.value - originalTransaction.value
+
+            updatedWallets = updatedWallets.map((w) => {
+              if (w.id === transaction.walletId) {
+                return {
+                  ...w,
+                  balance: transaction.type === "income" ? w.balance + difference : w.balance - difference,
+                }
+              }
+              return w
+            })
+          }
+
+          set({ wallets: updatedWallets })
+        }
+
         // Handle recurrence group updates
         if (updateAll && (transaction.recurrenceGroupId || transaction.id)) {
           const groupId = transaction.recurrenceGroupId || transaction.id
@@ -103,10 +199,27 @@ export const useFinancialStore = create<FinancialState>()(
       },
 
       deleteTransaction: (id, deleteAll = false) => {
-        // Encontrar a transação para verificar se é parte de um grupo de recorrência
+        // Encontrar a transação para ajustar o saldo da carteira
         const income = get().incomes.find((t) => t.id === id)
         const expense = get().expenses.find((t) => t.id === id)
         const transaction = income || expense
+
+        if (transaction) {
+          const { wallets } = get()
+
+          // Ajustar o saldo da carteira
+          const updatedWallets = wallets.map((w) => {
+            if (w.id === transaction.walletId) {
+              return {
+                ...w,
+                balance: transaction.type === "income" ? w.balance - transaction.value : w.balance + transaction.value,
+              }
+            }
+            return w
+          })
+
+          set({ wallets: updatedWallets })
+        }
 
         if (deleteAll && transaction && (transaction.recurrenceGroupId || transaction.isRecurring)) {
           const groupId = transaction.recurrenceGroupId || transaction.id
@@ -141,6 +254,98 @@ export const useFinancialStore = create<FinancialState>()(
         }))
       },
 
+      addWallet: (wallet) => {
+        set((state) => ({ wallets: [...state.wallets, wallet] }))
+      },
+
+      updateWallet: (wallet) => {
+        set((state) => ({
+          wallets: state.wallets.map((w) => (w.id === wallet.id ? wallet : w)),
+        }))
+      },
+
+      deleteWallet: (id) => {
+        // Verificar se existem transações vinculadas a esta carteira
+        const { incomes, expenses } = get()
+        const hasTransactions = incomes.some((t) => t.walletId === id) || expenses.some((t) => t.walletId === id)
+
+        if (hasTransactions) {
+          throw new Error("Não é possível excluir uma carteira com transações vinculadas")
+        }
+
+        set((state) => ({
+          wallets: state.wallets.filter((w) => w.id !== id),
+        }))
+      },
+
+      transferBetweenWallets: (transfer) => {
+        const { wallets } = get()
+        const fromWallet = wallets.find((w) => w.id === transfer.fromWalletId)
+        const toWallet = wallets.find((w) => w.id === transfer.toWalletId)
+
+        if (!fromWallet || !toWallet) {
+          throw new Error("Carteiras não encontradas")
+        }
+
+        if (fromWallet.balance < transfer.amount) {
+          throw new Error("Saldo insuficiente para transferência")
+        }
+
+        // Atualizar os saldos das carteiras
+        const updatedWallets = wallets.map((w) => {
+          if (w.id === fromWallet.id) {
+            return { ...w, balance: w.balance - transfer.amount }
+          }
+          if (w.id === toWallet.id) {
+            return { ...w, balance: w.balance + transfer.amount }
+          }
+          return w
+        })
+
+        // Criar transações de saída e entrada para a transferência
+        const transferId = crypto.randomUUID()
+        const now = new Date()
+
+        const expenseTransaction: Transaction = {
+          id: `transfer-out-${transferId}`,
+          type: "expense",
+          name: `Transferência para ${toWallet.name}`,
+          value: transfer.amount,
+          date: transfer.date,
+          category: "transfer",
+          walletId: fromWallet.id,
+          description: transfer.description || `Transferência para ${toWallet.name}`,
+          transferId,
+          createdAt: now,
+        }
+
+        const incomeTransaction: Transaction = {
+          id: `transfer-in-${transferId}`,
+          type: "income",
+          name: `Transferência de ${fromWallet.name}`,
+          value: transfer.amount,
+          date: transfer.date,
+          category: "transfer",
+          walletId: toWallet.id,
+          description: transfer.description || `Transferência de ${fromWallet.name}`,
+          transferId,
+          createdAt: now,
+        }
+
+        set((state) => ({
+          wallets: updatedWallets,
+          transfers: [...state.transfers, transfer],
+          expenses: [...state.expenses, expenseTransaction],
+          incomes: [...state.incomes, incomeTransaction],
+        }))
+      },
+
+      updateWalletBalance: (walletId, newBalance) => {
+        set((state) => ({
+          wallets: state.wallets.map((w) => (w.id === walletId ? { ...w, balance: newBalance } : w)),
+        }))
+      },
+
       importData: (data) => {
         // Ensure dates are properly converted to Date objects
         const processedData = {
@@ -155,6 +360,14 @@ export const useFinancialStore = create<FinancialState>()(
             createdAt: new Date(expense.createdAt),
           })),
           categories: data.categories || INITIAL_CATEGORIES,
+          wallets: data.wallets || INITIAL_WALLETS,
+          transfers: data.transfers
+            ? data.transfers.map((transfer) => ({
+                ...transfer,
+                date: new Date(transfer.date),
+                createdAt: new Date(transfer.createdAt),
+              }))
+            : [],
         }
 
         set(processedData)
@@ -165,6 +378,8 @@ export const useFinancialStore = create<FinancialState>()(
           incomes: [],
           expenses: [],
           categories: INITIAL_CATEGORIES,
+          wallets: INITIAL_WALLETS,
+          transfers: [],
         })
       },
     }),

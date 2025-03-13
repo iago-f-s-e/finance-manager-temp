@@ -1,6 +1,6 @@
 "use client"
 
-import {useState, useEffect, useMemo} from "react"
+import { useState, useEffect, useMemo } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -20,7 +20,6 @@ import { cn } from "@/lib/utils"
 import type { Transaction, TransactionType, RecurrenceType } from "@/types/transaction"
 import type { Category } from "@/types/category"
 import { RECURRENCE_TYPES } from "@/lib/constants"
-import { CurrencyInput } from "@/components/currency-input"
 import { CategoryDialog } from "@/components/category-dialog"
 import { useFinancialStore } from "@/lib/store"
 import {handleInputMoneyMask, handleRemoveMoneyMask} from "@/lib/masks";
@@ -88,6 +87,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
   }, [transaction, form])
 
   // Modificar o useEffect que sincroniza o estado isRecurring
+  // TODO: refatorar esse useeffect
   useEffect(() => {
     const subscription = form.watch((value) => {
       if (value.isRecurring !== undefined) {

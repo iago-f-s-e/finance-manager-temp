@@ -12,9 +12,8 @@ interface FinancialState {
 
   // Transaction actions
   addTransaction: (transaction: Transaction) => void
-  updateTransaction: (transaction: Transaction) => void
-  deleteTransaction: (id: string) => void
-  updateRecurrenceGroup: (transaction: Transaction, updateAll: boolean) => void
+  updateTransaction: (transaction: Transaction, updateAll?: boolean) => void
+  deleteTransaction: (id: string, deleteAll?: boolean) => void
 
   // Category actions
   addCategory: (category: Category) => void
@@ -51,66 +50,78 @@ export const useFinancialStore = create<FinancialState>()(
         }
       },
 
-      updateTransaction: (transaction) => {
-        if (transaction.type === "income") {
-          set((state) => ({
-            incomes: state.incomes.map((income) => (income.id === transaction.id ? transaction : income)),
-          }))
-        } else {
-          set((state) => ({
-            expenses: state.expenses.map((expense) => (expense.id === transaction.id ? transaction : expense)),
-          }))
-        }
-      },
-
-      deleteTransaction: (id) => {
-        set((state) => ({
-          incomes: state.incomes.filter((income) => income.id !== id),
-          expenses: state.expenses.filter((expense) => expense.id !== id),
-        }))
-      },
-
-      // Corrigir o problema com a função updateRecurrenceGroup
-      // Modificar a função para evitar atualizações desnecessárias
-
-      // Substituir a função updateRecurrenceGroup por:
-      updateRecurrenceGroup: (transaction, updateAll) => {
-        if (!transaction.recurrenceGroupId && !updateAll) {
-          // Just update the single transaction if not part of a group
-          get().updateTransaction(transaction)
-          return
-        }
-
-        const groupId = transaction.recurrenceGroupId || transaction.id
-        const transactions = transaction.type === "income" ? [...get().incomes] : [...get().expenses]
-
-        if (updateAll) {
-          // Update all transactions in the recurrence group
-          const updatedTransactions = transactions.map((t) => {
-            if (t.recurrenceGroupId === groupId || t.id === groupId) {
-              // Keep original date but update other fields
-              return {
-                ...transaction,
-                id: t.id,
-                date: new Date(t.date),
-                isPartOfRecurrence: t.isPartOfRecurrence,
-                recurrenceGroupId: t.recurrenceGroupId,
-              }
-            }
-            return t
-          })
+      updateTransaction: (transaction, updateAll = false) => {
+        // Handle recurrence group updates
+        if (updateAll && (transaction.recurrenceGroupId || transaction.id)) {
+          const groupId = transaction.recurrenceGroupId || transaction.id
 
           if (transaction.type === "income") {
-            set({ incomes: updatedTransactions })
+            set((state) => ({
+              incomes: state.incomes.map((t) => {
+                // Atualiza todas as transações do grupo de recorrência
+                if (t.recurrenceGroupId === groupId || t.id === groupId) {
+                  return {
+                    ...transaction,
+                    id: t.id,
+                    date: new Date(t.date),
+                    isPartOfRecurrence: t.isPartOfRecurrence,
+                    recurrenceGroupId: t.recurrenceGroupId,
+                  }
+                }
+                return t
+              }),
+            }))
           } else {
-            set({ expenses: updatedTransactions })
+            set((state) => ({
+              expenses: state.expenses.map((t) => {
+                // Atualiza todas as transações do grupo de recorrência
+                if (t.recurrenceGroupId === groupId || t.id === groupId) {
+                  return {
+                    ...transaction,
+                    id: t.id,
+                    date: new Date(t.date),
+                    isPartOfRecurrence: t.isPartOfRecurrence,
+                    recurrenceGroupId: t.recurrenceGroupId,
+                  }
+                }
+                return t
+              }),
+            }))
           }
         } else {
-          // Update only the specific transaction
-          get().updateTransaction({
-            ...transaction,
-            date: new Date(transaction.date),
-          })
+          // Update single transaction
+          if (transaction.type === "income") {
+            set((state) => ({
+              incomes: state.incomes.map((income) => (income.id === transaction.id ? transaction : income)),
+            }))
+          } else {
+            set((state) => ({
+              expenses: state.expenses.map((expense) => (expense.id === transaction.id ? transaction : expense)),
+            }))
+          }
+        }
+      },
+
+      deleteTransaction: (id, deleteAll = false) => {
+        // Encontrar a transação para verificar se é parte de um grupo de recorrência
+        const income = get().incomes.find((t) => t.id === id)
+        const expense = get().expenses.find((t) => t.id === id)
+        const transaction = income || expense
+
+        if (deleteAll && transaction && (transaction.recurrenceGroupId || transaction.isRecurring)) {
+          const groupId = transaction.recurrenceGroupId || transaction.id
+
+          // Excluir todas as transações do grupo de recorrência
+          set((state) => ({
+            incomes: state.incomes.filter((t) => t.recurrenceGroupId !== groupId && t.id !== groupId),
+            expenses: state.expenses.filter((t) => t.recurrenceGroupId !== groupId && t.id !== groupId),
+          }))
+        } else {
+          // Excluir apenas a transação específica
+          set((state) => ({
+            incomes: state.incomes.filter((income) => income.id !== id),
+            expenses: state.expenses.filter((expense) => expense.id !== id),
+          }))
         }
       },
 
@@ -131,11 +142,22 @@ export const useFinancialStore = create<FinancialState>()(
       },
 
       importData: (data) => {
-        set({
-          incomes: data.incomes || [],
-          expenses: data.expenses || [],
+        // Ensure dates are properly converted to Date objects
+        const processedData = {
+          incomes: data.incomes.map((income) => ({
+            ...income,
+            date: new Date(income.date),
+            createdAt: new Date(income.createdAt),
+          })),
+          expenses: data.expenses.map((expense) => ({
+            ...expense,
+            date: new Date(expense.date),
+            createdAt: new Date(expense.createdAt),
+          })),
           categories: data.categories || INITIAL_CATEGORIES,
-        })
+        }
+
+        set(processedData)
       },
 
       clearAllData: () => {

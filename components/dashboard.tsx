@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { FinancialChart } from "@/components/financial-chart"
@@ -12,6 +11,7 @@ import { useFinancialStore } from "@/lib/store"
 import { formatCurrency } from "@/lib/financial-utils"
 import { ArrowDownIcon, ArrowUpIcon, BarChart3Icon, DollarSignIcon, ListFilterIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
 
 export default function Dashboard() {
   const router = useRouter()
@@ -25,15 +25,27 @@ export default function Dashboard() {
   })
 
   useEffect(() => {
+    // Calcular os novos totais
     const totalIncome = incomes.reduce((sum, income) => sum + income.value, 0)
     const totalExpense = expenses.reduce((sum, expense) => sum + expense.value, 0)
     const balance = totalIncome - totalExpense
 
-    setTotals({
-      totalIncome,
-      totalExpense,
-      balance,
-      accumulated: balance,
+    // Verificar se os valores realmente mudaram antes de atualizar o estado
+    setTotals((prev) => {
+      if (
+        prev.totalIncome !== totalIncome ||
+        prev.totalExpense !== totalExpense ||
+        prev.balance !== balance ||
+        prev.accumulated !== balance
+      ) {
+        return {
+          totalIncome,
+          totalExpense,
+          balance,
+          accumulated: balance,
+        }
+      }
+      return prev
     })
   }, [incomes, expenses])
 
@@ -119,13 +131,7 @@ export default function Dashboard() {
                 <TransactionList
                   transactions={incomes}
                   type="income"
-                  onUpdate={(transaction, updateAll) => {
-                    if (updateAll && (transaction.recurrenceGroupId || transaction.isRecurring)) {
-                      updateTransaction(transaction) // TODO: corrigir updateTransaction para atualizar todos
-                    } else {
-                      updateTransaction(transaction)
-                    }
-                  }}
+                  onUpdate={updateTransaction}
                   onDelete={deleteTransaction}
                 />
               </CardContent>
@@ -139,13 +145,7 @@ export default function Dashboard() {
                 <TransactionList
                   transactions={expenses}
                   type="expense"
-                  onUpdate={(transaction, updateAll) => {
-                    if (updateAll && (transaction.recurrenceGroupId || transaction.isRecurring)) {
-                      updateTransaction(transaction) // TODO: corrigir updateTransaction para atualizar todos
-                    } else {
-                      updateTransaction(transaction)
-                    }
-                  }}
+                  onUpdate={updateTransaction}
                   onDelete={deleteTransaction}
                 />
               </CardContent>

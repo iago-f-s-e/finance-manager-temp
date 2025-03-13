@@ -37,8 +37,8 @@ import { useFinancialStore } from "@/lib/store"
 interface TransactionListProps {
   transactions: Transaction[]
   type: TransactionType
-  onUpdate: (transaction: Transaction, updateAll: boolean) => void
-  onDelete: (id: string) => void
+  onUpdate: (transaction: Transaction, updateAll?: boolean) => void
+  onDelete: (id: string, deleteAll?: boolean) => void
 }
 
 const RECURRENCE_TYPES = [
@@ -54,31 +54,35 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+
   const categoriesStore = useFinancialStore((state) => state.categories)
   const categories = useMemo(() => categoriesStore.filter((c) => c.type === type), [categoriesStore, type])
 
-
   // Filter transactions
-  const filteredTransactions = transactions.filter((transaction) => {
-    // Filter by search term
-    if (searchTerm && !transaction.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false
-    }
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((transaction) => {
+      // Filter by search term
+      if (searchTerm && !transaction.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return false
+      }
 
-    // Filter by category
-    if (selectedCategory && selectedCategory !== "all" && transaction.category !== selectedCategory) {
-      return false
-    }
+      // Filter by category
+      if (selectedCategory && selectedCategory !== "all" && transaction.category !== selectedCategory) {
+        return false
+      }
 
-    return true
-  })
+      return true
+    })
+  }, [transactions, searchTerm, selectedCategory])
 
   // Sort transactions
-  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
-    const dateA = new Date(a.date).getTime()
-    const dateB = new Date(b.date).getTime()
-    return sortOrder === "desc" ? dateB - dateA : dateA - dateB
-  })
+  const sortedTransactions = useMemo(() => {
+    return [...filteredTransactions].sort((a, b) => {
+      const dateA = new Date(a.date).getTime()
+      const dateB = new Date(b.date).getTime()
+      return sortOrder === "desc" ? dateB - dateA : dateA - dateB
+    })
+  }, [filteredTransactions, sortOrder])
 
   const handleEdit = (transaction: Transaction) => {
     setEditTransaction(transaction)
@@ -91,8 +95,8 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
     setEditTransaction(null)
   }
 
-  const handleDelete = (id: string) => {
-    onDelete(id)
+  const handleDelete = (transaction: Transaction, deleteAll = false) => {
+    onDelete(transaction.id, deleteAll && (transaction.isRecurring || transaction.recurrenceGroupId !== undefined))
   }
 
   const getCategoryLabel = (categoryValue: string) => {
@@ -220,17 +224,22 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
                         <EditIcon className="mr-2 h-4 w-4" />
                         Editar
                       </DropdownMenuItem>
-                      {transaction.isRecurring && (
-                        // TODO: lidar com handleEdit no caso do updateAllRecurrences = true
+                      {(transaction.isRecurring || transaction.recurrenceGroupId) && (
                         <DropdownMenuItem onClick={() => handleEdit({ ...transaction, updateAllRecurrences: true })}>
                           <RepeatIcon className="mr-2 h-4 w-4" />
                           Editar todas recorrências
                         </DropdownMenuItem>
                       )}
-                      <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(transaction.id)}>
+                      <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(transaction)}>
                         <TrashIcon className="mr-2 h-4 w-4" />
                         Excluir
                       </DropdownMenuItem>
+                      {(transaction.isRecurring || transaction.recurrenceGroupId) && (
+                        <DropdownMenuItem className="text-red-600" onClick={() => handleDelete(transaction, true)}>
+                          <TrashIcon className="mr-2 h-4 w-4" />
+                          Excluir todas recorrências
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>

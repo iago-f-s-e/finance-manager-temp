@@ -30,6 +30,7 @@ import {
   formatCurrency,
 } from "@/lib/financial-utils"
 import { CHART_TYPES } from "@/lib/constants"
+import React from "react"
 
 interface FinancialChartProps {
   incomes: Transaction[]
@@ -67,18 +68,21 @@ export function FinancialChart({ incomes, expenses, categories, filters }: Finan
   // Substituir por um Tooltip padrão do Recharts
 
   // Substituir a função renderTooltip por:
+  // Usar React.memo para evitar renderizações desnecessárias do tooltip
+  const TooltipContent = React.memo(({ label, payload }: { label: string; payload: any[] }) => (
+    <div className="bg-background p-2 border rounded-md shadow-sm">
+      <p className="font-medium">{label}</p>
+      {payload.map((entry: any, index: number) => (
+        <p key={`item-${index}`} style={{ color: entry.color || entry.stroke }}>
+          {entry.name}: {formatCurrency(entry.value)}
+        </p>
+      ))}
+    </div>
+  ))
+
   const renderTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      return (
-        <div className="bg-background p-2 border rounded-md shadow-sm">
-          <p className="font-medium">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={`item-${index}`} style={{ color: entry.color || entry.stroke }}>
-              {entry.name}: {formatCurrency(entry.value)}
-            </p>
-          ))}
-        </div>
-      )
+      return <TooltipContent label={label} payload={payload} />
     }
     return null
   }

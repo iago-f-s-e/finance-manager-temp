@@ -91,7 +91,7 @@ export function groupTransactionsByCategory(transactions: Transaction[], categor
 }
 
 export function groupTransactionsByWallet(transactions: Transaction[], wallets: Wallet[]) {
-  const result = (wallets ?? []).reduce(
+  const result = wallets.reduce(
     (acc, wallet) => {
       acc[wallet.id] = 0
       return acc

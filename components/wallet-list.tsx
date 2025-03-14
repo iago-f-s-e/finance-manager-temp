@@ -31,7 +31,7 @@ export function WalletList() {
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const totalBalance = (wallets ?? []).reduce((sum, wallet) => sum + wallet.balance, 0)
+  const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0)
 
   const handleAddWallet = (wallet: Wallet) => {
     addWallet(wallet)

@@ -25,7 +25,7 @@ export default function DetailsPage() {
   const currentMonthRange = getCurrentMonthDateRange()
 
   // Get data from store
-  const { incomes, expenses, categories, updateTransaction, deleteTransaction } = useFinancialStore()
+  const { incomes, expenses, categories, wallets, updateTransaction, deleteTransaction } = useFinancialStore()
 
   // State for filters
   const [filters, setFilters] = useState<TransactionFilters>({
@@ -310,6 +310,7 @@ export default function DetailsPage() {
                 expenses={filteredExpenses}
                 categories={categories}
                 filters={filters}
+                wallets={wallets}
               />
             </CardContent>
           </Card>

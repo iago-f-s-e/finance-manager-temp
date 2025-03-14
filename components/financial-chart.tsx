@@ -25,11 +25,12 @@ import type { Transaction, TransactionFilters } from "@/types/transaction"
 import type { Category } from "@/types/category"
 import type { Wallet } from "@/types/wallet"
 import {
-  groupTransactionsByMonth,
-  calculateMonthlyBalance,
+  groupTransactionsByTimeScale,
+  calculateBalanceByTimeScale,
   groupTransactionsByCategory,
   groupTransactionsByWallet,
   formatCurrency,
+  type TimeScale,
 } from "@/lib/financial-utils"
 import { CHART_TYPES } from "@/lib/constants"
 import React from "react"
@@ -45,13 +46,14 @@ interface FinancialChartProps {
 export function FinancialChart({ incomes, expenses, categories, wallets, filters }: FinancialChartProps) {
   const [chartType, setChartType] = useState("line")
   const [chartView, setChartView] = useState("overview")
+  const [timeScale, setTimeScale] = useState<TimeScale>("month")
 
   // Memoize chart data to prevent unnecessary recalculations
   const chartData = useMemo(() => {
-    const monthlyIncomes = groupTransactionsByMonth(incomes)
-    const monthlyExpenses = groupTransactionsByMonth(expenses)
-    return calculateMonthlyBalance(monthlyIncomes, monthlyExpenses)
-  }, [incomes, expenses])
+    const timeScaledIncomes = groupTransactionsByTimeScale(incomes, timeScale)
+    const timeScaledExpenses = groupTransactionsByTimeScale(expenses, timeScale)
+    return calculateBalanceByTimeScale(timeScaledIncomes, timeScaledExpenses, timeScale)
+  }, [incomes, expenses, timeScale])
 
   // Memoize category data
   const categoryData = useMemo(() => {
@@ -427,6 +429,19 @@ export function FinancialChart({ incomes, expenses, categories, wallets, filters
         </Tabs>
 
         <div className="flex items-center gap-2 ml-auto">
+          <Select value={timeScale} onValueChange={(value) => setTimeScale(value as TimeScale)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Escala de Tempo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="day">Diária</SelectItem>
+              <SelectItem value="week">Semanal</SelectItem>
+              <SelectItem value="biweekly">Quinzenal</SelectItem>
+              <SelectItem value="month">Mensal</SelectItem>
+              <SelectItem value="year">Anual</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Select value={chartType} onValueChange={setChartType}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Tipo de Gráfico" />

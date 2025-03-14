@@ -24,6 +24,8 @@ import { CategoryDialog } from "@/components/category-dialog"
 import { useFinancialStore } from "@/lib/store"
 import { handleInputMoneyMask, handleRemoveMoneyMask } from "@/lib/mask"
 
+// Remover o campo effectuateAll do formulário
+// 1. Remover do schema
 const transactionFormSchema = z.object({
   name: z.string().min(2, {
     message: "O nome deve ter pelo menos 2 caracteres.",
@@ -41,7 +43,6 @@ const transactionFormSchema = z.object({
   recurrenceType: z.string().optional(),
   recurrenceCount: z.coerce.number().int().min(2).max(60).optional(),
   isEffectuated: z.boolean().default(false),
-  effectuateAll: z.boolean().default(false),
 })
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>
@@ -61,6 +62,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
   const wallets = useFinancialStore((state) => state.wallets)
   const addCategory = useFinancialStore((state) => state.addCategory)
 
+  // 2. Remover do defaultValues
   const defaultValues: Partial<TransactionFormValues> = {
     name: transaction?.name || "",
     value: handleInputMoneyMask(transaction?.value ?? 0),
@@ -72,7 +74,6 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
     recurrenceType: transaction?.recurrenceType || "monthly",
     recurrenceCount: transaction?.recurrenceCount || 2,
     isEffectuated: transaction?.isEffectuated || false,
-    effectuateAll: false,
   }
 
   const form = useForm<TransactionFormValues>({
@@ -81,6 +82,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
   })
 
   // Update form when transaction changes
+  // 3. Remover do reset
   useEffect(() => {
     if (transaction) {
       form.reset({
@@ -94,7 +96,6 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
         recurrenceType: transaction.recurrenceType || "monthly",
         recurrenceCount: transaction.recurrenceCount || 2,
         isEffectuated: transaction.isEffectuated || false,
-        effectuateAll: false,
       })
       setIsRecurring(transaction.isRecurring || false)
     }
@@ -112,6 +113,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
     return () => subscription.unsubscribe()
   }, [form])
 
+  // 4. Modificar o handleSubmit para não usar effectuateAll
   function handleSubmit(data: TransactionFormValues) {
     const newTransaction: Transaction = {
       id: transaction?.id || crypto.randomUUID(),
@@ -132,7 +134,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
       createdAt: transaction?.createdAt || new Date(),
     }
 
-    onSubmit(newTransaction, data.isRecurring ? data.effectuateAll : updateAllRecurrences)
+    onSubmit(newTransaction, updateAllRecurrences)
 
     if (!transaction) {
       form.reset()
@@ -363,23 +365,8 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
                 )}
               />
 
-              {!transaction && (
-                <FormField
-                  control={form.control}
-                  name="effectuateAll"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Efetivar todas as recorrências</FormLabel>
-                        <FormDescription>Marcar todas as transações recorrentes como efetivadas</FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              )}
+              {/* 5. Remover o componente FormField para effectuateAll */}
+              {/* Remover este bloco inteiro: */}
             </>
           )}
 

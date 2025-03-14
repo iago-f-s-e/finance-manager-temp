@@ -60,6 +60,7 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
   const [selectedWallet, setSelectedWallet] = useState<string>("")
   const [selectedEffectuated, setSelectedEffectuated] = useState<string>("all")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+  const [recurrenceGroupFilter, setRecurrenceGroupFilter] = useState<string | null>(null)
 
   const categoriesStore = useFinancialStore((state) => state.categories)
   const categories = useMemo(() => categoriesStore.filter((c) => c.type === type), [categoriesStore, type])
@@ -92,9 +93,17 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
         }
       }
 
+      // Filter by recurrence group
+      if (recurrenceGroupFilter) {
+        const groupId = transaction.recurrenceGroupId || transaction.id
+        if (groupId !== recurrenceGroupFilter) {
+          return false
+        }
+      }
+
       return true
     })
-  }, [transactions, searchTerm, selectedCategory, selectedWallet, selectedEffectuated])
+  }, [transactions, searchTerm, selectedCategory, selectedWallet, selectedEffectuated, recurrenceGroupFilter])
 
   // Sort transactions
   const sortedTransactions = useMemo(() => {
@@ -148,20 +157,29 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
     setSortOrder(sortOrder === "desc" ? "asc" : "desc")
   }
 
+  const handleFilterByRecurrenceGroup = (transaction: Transaction) => {
+    const groupId = transaction.recurrenceGroupId || transaction.id
+    setRecurrenceGroupFilter(groupId)
+  }
+
+  const clearRecurrenceGroupFilter = () => {
+    setRecurrenceGroupFilter(null)
+  }
+
   return (
     <>
-      <div className="flex flex-col space-y-2 mb-4">
-        <div className="flex items-center space-x-2">
-          <div className="relative flex-1">
-            <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nome..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8"
-            />
-          </div>
+      <div className="flex flex-col space-y-4 mb-4">
+        <div className="relative">
+          <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
 
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Categoria" />
@@ -211,6 +229,18 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
             {sortOrder === "desc" ? <SortDescIcon className="h-4 w-4" /> : <SortAscIcon className="h-4 w-4" />}
           </Button>
         </div>
+
+        {recurrenceGroupFilter && (
+          <div className="flex items-center">
+            <Badge variant="outline" className="gap-1">
+              <RepeatIcon className="h-3 w-3" />
+              Filtrando por grupo de recorrência
+            </Badge>
+            <Button variant="ghost" size="sm" onClick={clearRecurrenceGroupFilter} className="ml-2 h-6 px-2">
+              <XCircle className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
       </div>
 
       <ScrollArea className="h-[400px] pr-4">
@@ -332,6 +362,15 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
                           <XCircle className="mr-2 h-4 w-4" />
                           Desfazer efetivação de todas
                         </DropdownMenuItem>
+                      )}
+                      {(transaction.isRecurring || transaction.recurrenceGroupId) && (
+                        <>
+                          <DropdownMenuItem onClick={() => handleFilterByRecurrenceGroup(transaction)}>
+                            <RepeatIcon className="mr-2 h-4 w-4" />
+                            Filtrar por este grupo
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
                       )}
                       {(transaction.isRecurring || transaction.recurrenceGroupId) && (
                         <DropdownMenuItem onClick={() => handleEdit({ ...transaction, updateAllRecurrences: true })}>

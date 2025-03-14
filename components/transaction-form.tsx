@@ -40,6 +40,8 @@ const transactionFormSchema = z.object({
   isRecurring: z.boolean().default(false),
   recurrenceType: z.string().optional(),
   recurrenceCount: z.coerce.number().int().min(2).max(60).optional(),
+  isEffectuated: z.boolean().default(false),
+  effectuateAll: z.boolean().default(false),
 })
 
 type TransactionFormValues = z.infer<typeof transactionFormSchema>
@@ -69,6 +71,8 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
     isRecurring: transaction?.isRecurring || false,
     recurrenceType: transaction?.recurrenceType || "monthly",
     recurrenceCount: transaction?.recurrenceCount || 2,
+    isEffectuated: transaction?.isEffectuated || false,
+    effectuateAll: false,
   }
 
   const form = useForm<TransactionFormValues>({
@@ -89,6 +93,8 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
         isRecurring: transaction.isRecurring || false,
         recurrenceType: transaction.recurrenceType || "monthly",
         recurrenceCount: transaction.recurrenceCount || 2,
+        isEffectuated: transaction.isEffectuated || false,
+        effectuateAll: false,
       })
       setIsRecurring(transaction.isRecurring || false)
     }
@@ -121,10 +127,12 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
       recurrenceCount: data.isRecurring ? data.recurrenceCount : undefined,
       isPartOfRecurrence: transaction?.isPartOfRecurrence,
       recurrenceGroupId: transaction?.recurrenceGroupId,
+      isEffectuated: data.isEffectuated,
+      effectuatedAt: data.isEffectuated ? new Date() : undefined,
       createdAt: transaction?.createdAt || new Date(),
     }
 
-    onSubmit(newTransaction, updateAllRecurrences)
+    onSubmit(newTransaction, data.isRecurring ? data.effectuateAll : updateAllRecurrences)
 
     if (!transaction) {
       form.reset()
@@ -281,6 +289,22 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
         <div className="space-y-4">
           <FormField
             control={form.control}
+            name="isEffectuated"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">Efetivada</FormLabel>
+                  <FormDescription>Esta {type === "income" ? "entrada" : "saída"} já foi efetivada?</FormDescription>
+                </div>
+                <FormControl>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
             name="isRecurring"
             render={({ field }) => (
               <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
@@ -338,6 +362,24 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
                   </FormItem>
                 )}
               />
+
+              {!transaction && (
+                <FormField
+                  control={form.control}
+                  name="effectuateAll"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Efetivar todas as recorrências</FormLabel>
+                        <FormDescription>Marcar todas as transações recorrentes como efetivadas</FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              )}
             </>
           )}
 

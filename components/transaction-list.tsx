@@ -14,6 +14,9 @@ import {
   SortDescIcon,
   TrashIcon,
   WalletIcon,
+  CheckCircle,
+  XCircle,
+  CheckCircle2,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -55,11 +58,13 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const [selectedWallet, setSelectedWallet] = useState<string>("")
+  const [selectedEffectuated, setSelectedEffectuated] = useState<string>("all")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
 
   const categoriesStore = useFinancialStore((state) => state.categories)
   const categories = useMemo(() => categoriesStore.filter((c) => c.type === type), [categoriesStore, type])
   const wallets = useFinancialStore((state) => state.wallets)
+  const effectuateTransaction = useFinancialStore((state) => state.effectuateTransaction)
 
   // Filter transactions
   const filteredTransactions = useMemo(() => {
@@ -79,9 +84,17 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
         return false
       }
 
+      // Filter by effectuated status
+      if (selectedEffectuated !== "all") {
+        const isEffectuated = selectedEffectuated === "effectuated"
+        if (transaction.isEffectuated !== isEffectuated) {
+          return false
+        }
+      }
+
       return true
     })
-  }, [transactions, searchTerm, selectedCategory, selectedWallet])
+  }, [transactions, searchTerm, selectedCategory, selectedWallet, selectedEffectuated])
 
   // Sort transactions
   const sortedTransactions = useMemo(() => {
@@ -105,6 +118,10 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
 
   const handleDelete = (transaction: Transaction, deleteAll = false) => {
     onDelete(transaction.id, deleteAll && (transaction.isRecurring || transaction.recurrenceGroupId !== undefined))
+  }
+
+  const handleEffectuate = (transaction: Transaction, isEffectuated: boolean, updateAll = false) => {
+    effectuateTransaction(transaction.id, isEffectuated, updateAll)
   }
 
   const getCategoryLabel = (categoryValue: string) => {
@@ -179,6 +196,17 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
             </SelectContent>
           </Select>
 
+          <Select value={selectedEffectuated} onValueChange={setSelectedEffectuated}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              <SelectItem value="effectuated">Efetivadas</SelectItem>
+              <SelectItem value="not-effectuated">Não efetivadas</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Button variant="outline" size="icon" onClick={toggleSortOrder}>
             {sortOrder === "desc" ? <SortDescIcon className="h-4 w-4" /> : <SortAscIcon className="h-4 w-4" />}
           </Button>
@@ -193,7 +221,7 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
                 Nenhuma {type === "income" ? "entrada" : "saída"} encontrada
               </p>
               <p className="text-xs text-muted-foreground">
-                {searchTerm || selectedCategory || selectedWallet
+                {searchTerm || selectedCategory || selectedWallet || selectedEffectuated !== "all"
                   ? "Tente ajustar os filtros"
                   : `Adicione uma nova ${type === "income" ? "entrada" : "saída"} para começar`}
               </p>
@@ -214,7 +242,14 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
                     {type === "income" ? <ArrowUpIcon className="h-5 w-5" /> : <ArrowDownIcon className="h-5 w-5" />}
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">{transaction.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium leading-none">{transaction.name}</p>
+                      {transaction.isEffectuated ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-gray-400" />
+                      )}
+                    </div>
                     <div className="flex items-center text-xs text-muted-foreground">
                       <CalendarIcon className="mr-1 h-3 w-3" />
                       {format(new Date(transaction.date), "dd/MM/yyyy")}
@@ -253,7 +288,10 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
                 </div>
                 <div className="flex items-center space-x-2">
                   <div className="text-right">
-                    <p className="text-sm font-medium" style={{ color: getCategoryColor(transaction.category) }}>
+                    <p
+                      className={`text-sm font-medium ${transaction.isEffectuated ? "" : "opacity-60"}`}
+                      style={{ color: getCategoryColor(transaction.category) }}
+                    >
                       {formatCurrency(transaction.value)}
                     </p>
                   </div>
@@ -271,6 +309,30 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
                         <EditIcon className="mr-2 h-4 w-4" />
                         Editar
                       </DropdownMenuItem>
+                      {!transaction.isEffectuated && (
+                        <DropdownMenuItem onClick={() => handleEffectuate(transaction, true, false)}>
+                          <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                          Efetivar
+                        </DropdownMenuItem>
+                      )}
+                      {transaction.isEffectuated && (
+                        <DropdownMenuItem onClick={() => handleEffectuate(transaction, false, false)}>
+                          <XCircle className="mr-2 h-4 w-4" />
+                          Desfazer efetivação
+                        </DropdownMenuItem>
+                      )}
+                      {(transaction.isRecurring || transaction.recurrenceGroupId) && !transaction.isEffectuated && (
+                        <DropdownMenuItem onClick={() => handleEffectuate(transaction, true, true)}>
+                          <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                          Efetivar todas recorrências
+                        </DropdownMenuItem>
+                      )}
+                      {(transaction.isRecurring || transaction.recurrenceGroupId) && transaction.isEffectuated && (
+                        <DropdownMenuItem onClick={() => handleEffectuate(transaction, false, true)}>
+                          <XCircle className="mr-2 h-4 w-4" />
+                          Desfazer efetivação de todas
+                        </DropdownMenuItem>
+                      )}
                       {(transaction.isRecurring || transaction.recurrenceGroupId) && (
                         <DropdownMenuItem onClick={() => handleEdit({ ...transaction, updateAllRecurrences: true })}>
                           <RepeatIcon className="mr-2 h-4 w-4" />

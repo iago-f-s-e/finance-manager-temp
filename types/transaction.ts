@@ -17,6 +17,8 @@ export interface Transaction {
   recurrenceGroupId?: string
   updateAllRecurrences?: boolean
   transferId?: string
+  isEffectuated: boolean
+  effectuatedAt?: Date
   createdAt: Date
 }
 
@@ -25,6 +27,7 @@ export interface TransactionFilters {
   endDate?: Date
   categories?: string[]
   walletIds?: string[]
+  isEffectuated?: boolean
   searchTerm?: string
 }
 

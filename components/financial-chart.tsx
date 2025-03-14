@@ -42,7 +42,7 @@ interface FinancialChartProps {
   filters?: TransactionFilters
 }
 
-export function FinancialChart({ incomes, expenses, categories, wallets = [], filters }: FinancialChartProps) {
+export function FinancialChart({ incomes, expenses, categories, wallets, filters }: FinancialChartProps) {
   const [chartType, setChartType] = useState("line")
   const [chartView, setChartView] = useState("overview")
 

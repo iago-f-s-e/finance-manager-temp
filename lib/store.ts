@@ -17,6 +17,7 @@ interface FinancialState {
   addTransaction: (transaction: Transaction) => void
   updateTransaction: (transaction: Transaction, updateAll?: boolean) => void
   deleteTransaction: (id: string, deleteAll?: boolean) => void
+  effectuateTransaction: (id: string, isEffectuated: boolean, updateAll?: boolean) => void
 
   // Category actions
   addCategory: (category: Category) => void
@@ -51,23 +52,26 @@ export const useFinancialStore = create<FinancialState>()(
       transfers: [],
 
       addTransaction: (transaction) => {
-        // Atualizar o saldo da carteira
-        const { wallets } = get()
-        const wallet = wallets.find((w) => w.id === transaction.walletId)
+        // Atualizar o saldo da carteira apenas se a transação for efetivada
+        if (transaction.isEffectuated) {
+          const { wallets } = get()
+          const wallet = wallets.find((w) => w.id === transaction.walletId)
 
-        if (wallet) {
-          // Atualizar o saldo da carteira com base no tipo de transação
-          const updatedWallets = wallets.map((w) => {
-            if (w.id === wallet.id) {
-              return {
-                ...w,
-                balance: transaction.type === "income" ? w.balance + transaction.value : w.balance - transaction.value,
+          if (wallet) {
+            // Atualizar o saldo da carteira com base no tipo de transação
+            const updatedWallets = wallets.map((w) => {
+              if (w.id === wallet.id) {
+                return {
+                  ...w,
+                  balance:
+                    transaction.type === "income" ? w.balance + transaction.value : w.balance - transaction.value,
+                }
               }
-            }
-            return w
-          })
+              return w
+            })
 
-          set({ wallets: updatedWallets })
+            set({ wallets: updatedWallets })
+          }
         }
 
         if (transaction.isRecurring && transaction.recurrenceCount && transaction.recurrenceType) {
@@ -101,50 +105,88 @@ export const useFinancialStore = create<FinancialState>()(
           const { wallets } = get()
           let updatedWallets = [...wallets]
 
-          // Se a carteira mudou, ajustar o saldo de ambas as carteiras
-          if (originalTransaction.walletId !== transaction.walletId) {
-            // Reverter o efeito na carteira original
-            updatedWallets = updatedWallets.map((w) => {
-              if (w.id === originalTransaction!.walletId) {
-                return {
-                  ...w,
-                  balance:
-                    transaction.type === "income"
-                      ? w.balance - originalTransaction!.value
-                      : w.balance + originalTransaction!.value,
-                }
+          // Ajustar o saldo da carteira apenas se a transação original ou a nova estiver efetivada
+          if (originalTransaction.isEffectuated || transaction.isEffectuated) {
+            // Se a carteira mudou, ajustar o saldo de ambas as carteiras
+            if (originalTransaction.walletId !== transaction.walletId) {
+              // Reverter o efeito na carteira original se estava efetivada
+              if (originalTransaction.isEffectuated) {
+                updatedWallets = updatedWallets.map((w) => {
+                  if (w.id === originalTransaction!.walletId) {
+                    return {
+                      ...w,
+                      balance:
+                        transaction.type === "income"
+                          ? w.balance - originalTransaction!.value
+                          : w.balance + originalTransaction!.value,
+                    }
+                  }
+                  return w
+                })
               }
-              return w
-            })
 
-            // Aplicar o efeito na nova carteira
-            updatedWallets = updatedWallets.map((w) => {
-              if (w.id === transaction.walletId) {
-                return {
-                  ...w,
-                  balance:
-                    transaction.type === "income" ? w.balance + transaction.value : w.balance - transaction.value,
-                }
+              // Aplicar o efeito na nova carteira se estiver efetivada
+              if (transaction.isEffectuated) {
+                updatedWallets = updatedWallets.map((w) => {
+                  if (w.id === transaction.walletId) {
+                    return {
+                      ...w,
+                      balance:
+                        transaction.type === "income" ? w.balance + transaction.value : w.balance - transaction.value,
+                    }
+                  }
+                  return w
+                })
               }
-              return w
-            })
+            }
+            // Se apenas o valor ou status de efetivação mudou, ajustar a diferença
+            else {
+              // Se ambas estão efetivadas, ajustar a diferença de valor
+              if (originalTransaction.isEffectuated && transaction.isEffectuated) {
+                const difference = transaction.value - originalTransaction.value
+
+                updatedWallets = updatedWallets.map((w) => {
+                  if (w.id === transaction.walletId) {
+                    return {
+                      ...w,
+                      balance: transaction.type === "income" ? w.balance + difference : w.balance - difference,
+                    }
+                  }
+                  return w
+                })
+              }
+              // Se a original estava efetivada mas a nova não está, reverter o valor
+              else if (originalTransaction.isEffectuated && !transaction.isEffectuated) {
+                updatedWallets = updatedWallets.map((w) => {
+                  if (w.id === transaction.walletId) {
+                    return {
+                      ...w,
+                      balance:
+                        transaction.type === "income"
+                          ? w.balance - originalTransaction.value
+                          : w.balance + originalTransaction.value,
+                    }
+                  }
+                  return w
+                })
+              }
+              // Se a original não estava efetivada mas a nova está, adicionar o valor
+              else if (!originalTransaction.isEffectuated && transaction.isEffectuated) {
+                updatedWallets = updatedWallets.map((w) => {
+                  if (w.id === transaction.walletId) {
+                    return {
+                      ...w,
+                      balance:
+                        transaction.type === "income" ? w.balance + transaction.value : w.balance - transaction.value,
+                    }
+                  }
+                  return w
+                })
+              }
+            }
+
+            set({ wallets: updatedWallets })
           }
-          // Se apenas o valor mudou, ajustar a diferença
-          else if (originalTransaction.value !== transaction.value) {
-            const difference = transaction.value - originalTransaction.value
-
-            updatedWallets = updatedWallets.map((w) => {
-              if (w.id === transaction.walletId) {
-                return {
-                  ...w,
-                  balance: transaction.type === "income" ? w.balance + difference : w.balance - difference,
-                }
-              }
-              return w
-            })
-          }
-
-          set({ wallets: updatedWallets })
         }
 
         // Handle recurrence group updates
@@ -198,13 +240,157 @@ export const useFinancialStore = create<FinancialState>()(
         }
       },
 
+      effectuateTransaction: (id, isEffectuated, updateAll = false) => {
+        // Encontrar a transação
+        const income = get().incomes.find((t) => t.id === id)
+        const expense = get().expenses.find((t) => t.id === id)
+        const transaction = income || expense
+
+        if (!transaction) return
+
+        const now = new Date()
+        const effectuatedAt = isEffectuated ? now : undefined
+
+        // Atualizar o saldo da carteira se o status de efetivação mudou
+        if (transaction.isEffectuated !== isEffectuated) {
+          const { wallets } = get()
+          const wallet = wallets.find((w) => w.id === transaction.walletId)
+
+          if (wallet) {
+            const updatedWallets = wallets.map((w) => {
+              if (w.id === wallet.id) {
+                // Se estiver efetivando, adicionar ao saldo (entrada) ou subtrair (saída)
+                if (isEffectuated) {
+                  return {
+                    ...w,
+                    balance:
+                      transaction.type === "income" ? w.balance + transaction.value : w.balance - transaction.value,
+                  }
+                }
+                // Se estiver desfazendo a efetivação, reverter o efeito no saldo
+                else {
+                  return {
+                    ...w,
+                    balance:
+                      transaction.type === "income" ? w.balance - transaction.value : w.balance + transaction.value,
+                  }
+                }
+              }
+              return w
+            })
+
+            set({ wallets: updatedWallets })
+          }
+        }
+
+        // Atualizar todas as transações do grupo de recorrência
+        if (updateAll && (transaction.recurrenceGroupId || transaction.id)) {
+          const groupId = transaction.recurrenceGroupId || transaction.id
+
+          if (transaction.type === "income") {
+            set((state) => ({
+              incomes: state.incomes.map((t) => {
+                if (t.recurrenceGroupId === groupId || t.id === groupId) {
+                  // Se o status de efetivação mudou, atualizar o saldo da carteira
+                  if (t.isEffectuated !== isEffectuated && t.id !== id) {
+                    const wallet = get().wallets.find((w) => w.id === t.walletId)
+
+                    if (wallet) {
+                      const updatedWallets = get().wallets.map((w) => {
+                        if (w.id === wallet.id) {
+                          if (isEffectuated) {
+                            return {
+                              ...w,
+                              balance: w.balance + t.value,
+                            }
+                          } else {
+                            return {
+                              ...w,
+                              balance: w.balance - t.value,
+                            }
+                          }
+                        }
+                        return w
+                      })
+
+                      set({ wallets: updatedWallets })
+                    }
+                  }
+
+                  return {
+                    ...t,
+                    isEffectuated,
+                    effectuatedAt: isEffectuated ? effectuatedAt : undefined,
+                  }
+                }
+                return t
+              }),
+            }))
+          } else {
+            set((state) => ({
+              expenses: state.expenses.map((t) => {
+                if (t.recurrenceGroupId === groupId || t.id === groupId) {
+                  // Se o status de efetivação mudou, atualizar o saldo da carteira
+                  if (t.isEffectuated !== isEffectuated && t.id !== id) {
+                    const wallet = get().wallets.find((w) => w.id === t.walletId)
+
+                    if (wallet) {
+                      const updatedWallets = get().wallets.map((w) => {
+                        if (w.id === wallet.id) {
+                          if (isEffectuated) {
+                            return {
+                              ...w,
+                              balance: w.balance - t.value,
+                            }
+                          } else {
+                            return {
+                              ...w,
+                              balance: w.balance + t.value,
+                            }
+                          }
+                        }
+                        return w
+                      })
+
+                      set({ wallets: updatedWallets })
+                    }
+                  }
+
+                  return {
+                    ...t,
+                    isEffectuated,
+                    effectuatedAt: isEffectuated ? effectuatedAt : undefined,
+                  }
+                }
+                return t
+              }),
+            }))
+          }
+        } else {
+          // Atualizar apenas a transação específica
+          if (transaction.type === "income") {
+            set((state) => ({
+              incomes: state.incomes.map((t) =>
+                t.id === id ? { ...t, isEffectuated, effectuatedAt: isEffectuated ? effectuatedAt : undefined } : t,
+              ),
+            }))
+          } else {
+            set((state) => ({
+              expenses: state.expenses.map((t) =>
+                t.id === id ? { ...t, isEffectuated, effectuatedAt: isEffectuated ? effectuatedAt : undefined } : t,
+              ),
+            }))
+          }
+        }
+      },
+
       deleteTransaction: (id, deleteAll = false) => {
         // Encontrar a transação para ajustar o saldo da carteira
         const income = get().incomes.find((t) => t.id === id)
         const expense = get().expenses.find((t) => t.id === id)
         const transaction = income || expense
 
-        if (transaction) {
+        if (transaction && transaction.isEffectuated) {
           const { wallets } = get()
 
           // Ajustar o saldo da carteira
@@ -223,6 +409,49 @@ export const useFinancialStore = create<FinancialState>()(
 
         if (deleteAll && transaction && (transaction.recurrenceGroupId || transaction.isRecurring)) {
           const groupId = transaction.recurrenceGroupId || transaction.id
+
+          // Ajustar o saldo para todas as transações efetivadas do grupo que serão excluídas
+          if (transaction.type === "income") {
+            const groupTransactions = get().incomes.filter(
+              (t) => (t.recurrenceGroupId === groupId || t.id === groupId) && t.isEffectuated && t.id !== id,
+            )
+
+            // Atualizar os saldos das carteiras para cada transação efetivada que será excluída
+            groupTransactions.forEach((t) => {
+              const { wallets } = get()
+              const updatedWallets = wallets.map((w) => {
+                if (w.id === t.walletId) {
+                  return {
+                    ...w,
+                    balance: w.balance - t.value,
+                  }
+                }
+                return w
+              })
+
+              set({ wallets: updatedWallets })
+            })
+          } else {
+            const groupTransactions = get().expenses.filter(
+              (t) => (t.recurrenceGroupId === groupId || t.id === groupId) && t.isEffectuated && t.id !== id,
+            )
+
+            // Atualizar os saldos das carteiras para cada transação efetivada que será excluída
+            groupTransactions.forEach((t) => {
+              const { wallets } = get()
+              const updatedWallets = wallets.map((w) => {
+                if (w.id === t.walletId) {
+                  return {
+                    ...w,
+                    balance: w.balance + t.value,
+                  }
+                }
+                return w
+              })
+
+              set({ wallets: updatedWallets })
+            })
+          }
 
           // Excluir todas as transações do grupo de recorrência
           set((state) => ({
@@ -316,6 +545,8 @@ export const useFinancialStore = create<FinancialState>()(
           walletId: fromWallet.id,
           description: transfer.description || `Transferência para ${toWallet.name}`,
           transferId,
+          isEffectuated: true,
+          effectuatedAt: now,
           createdAt: now,
         }
 
@@ -329,6 +560,8 @@ export const useFinancialStore = create<FinancialState>()(
           walletId: toWallet.id,
           description: transfer.description || `Transferência de ${fromWallet.name}`,
           transferId,
+          isEffectuated: true,
+          effectuatedAt: now,
           createdAt: now,
         }
 
@@ -352,12 +585,16 @@ export const useFinancialStore = create<FinancialState>()(
           incomes: data.incomes.map((income) => ({
             ...income,
             date: new Date(income.date),
+            effectuatedAt: income.effectuatedAt ? new Date(income.effectuatedAt) : undefined,
             createdAt: new Date(income.createdAt),
+            isEffectuated: income.isEffectuated || false,
           })),
           expenses: data.expenses.map((expense) => ({
             ...expense,
             date: new Date(expense.date),
+            effectuatedAt: expense.effectuatedAt ? new Date(expense.effectuatedAt) : undefined,
             createdAt: new Date(expense.createdAt),
+            isEffectuated: expense.isEffectuated || false,
           })),
           categories: data.categories || INITIAL_CATEGORIES,
           wallets: data.wallets || INITIAL_WALLETS,

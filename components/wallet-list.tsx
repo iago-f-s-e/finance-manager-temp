@@ -77,12 +77,13 @@ export function WalletList() {
 
   // Função para renderizar o ícone da carteira
   const renderWalletIcon = (iconName: string) => {
-    const Icon = (LucideIcons as Record<string, any>)[
-      iconName
-        .split("-")
-        .map((part, i) => (i === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)))
-        .join("")
-    ]
+    // Corrigindo o problema de renderização de ícones
+    // Usando o nome exato do componente do Lucide
+    const iconKey = (iconName.charAt(0).toUpperCase() + iconName.slice(1)).split("-")
+      .map((part, i) => (i === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)))
+      .join("")
+
+    const Icon = (LucideIcons as Record<string, any>)[iconKey]
 
     return Icon ? <Icon className="h-5 w-5" /> : null
   }
@@ -131,7 +132,7 @@ export function WalletList() {
                     className="p-2 rounded-full"
                     style={{ backgroundColor: `${wallet.color}20`, color: wallet.color }}
                   >
-                    {renderWalletIcon(wallet.icon || "wallet")}
+                    {renderWalletIcon(wallet.icon || "Wallet")}
                   </div>
                   <CardTitle className="text-lg">{wallet.name}</CardTitle>
                 </div>
@@ -222,7 +223,7 @@ export function WalletList() {
                 className="p-2 rounded-full"
                 style={{ backgroundColor: `${selectedWallet.color}20`, color: selectedWallet.color }}
               >
-                {renderWalletIcon(selectedWallet.icon || "wallet")}
+                {renderWalletIcon(selectedWallet.icon || "Wallet")}
               </div>
               <div>
                 <p className="font-medium">{selectedWallet.name}</p>
@@ -234,7 +235,7 @@ export function WalletList() {
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Atenção</AlertTitle>
-            <AlertDescription>Não é possível excluir uma carteira que possui transações vinculadas.</AlertDescription>
+            <AlertDescription>Lembre de transferir o saldo da carteira antes da exclusão.</AlertDescription>
           </Alert>
 
           <div className="flex justify-end gap-2">

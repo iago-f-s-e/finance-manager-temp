@@ -24,8 +24,6 @@ import { CategoryDialog } from "@/components/category-dialog"
 import { useFinancialStore } from "@/lib/store"
 import { handleInputMoneyMask, handleRemoveMoneyMask } from "@/lib/mask"
 
-// Remover o campo effectuateAll do formulário
-// 1. Remover do schema
 const transactionFormSchema = z.object({
   name: z.string().min(2, {
     message: "O nome deve ter pelo menos 2 caracteres.",
@@ -62,7 +60,6 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
   const wallets = useFinancialStore((state) => state.wallets)
   const addCategory = useFinancialStore((state) => state.addCategory)
 
-  // 2. Remover do defaultValues
   const defaultValues: Partial<TransactionFormValues> = {
     name: transaction?.name || "",
     value: handleInputMoneyMask(transaction?.value ?? 0),
@@ -82,7 +79,6 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
   })
 
   // Update form when transaction changes
-  // 3. Remover do reset
   useEffect(() => {
     if (transaction) {
       form.reset({
@@ -113,7 +109,6 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
     return () => subscription.unsubscribe()
   }, [form])
 
-  // 4. Modificar o handleSubmit para não usar effectuateAll
   function handleSubmit(data: TransactionFormValues) {
     const newTransaction: Transaction = {
       id: transaction?.id || crypto.randomUUID(),
@@ -364,9 +359,6 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
                   </FormItem>
                 )}
               />
-
-              {/* 5. Remover o componente FormField para effectuateAll */}
-              {/* Remover este bloco inteiro: */}
             </>
           )}
 

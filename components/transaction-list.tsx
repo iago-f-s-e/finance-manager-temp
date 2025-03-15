@@ -108,6 +108,7 @@ export function TransactionList({ transactions, type, onUpdate, onDelete }: Tran
   // Sort transactions
   const sortedTransactions = useMemo(() => {
     return [...filteredTransactions].sort((a, b) => {
+      // Usar explicitamente a data da transação, não a data de criação
       const dateA = new Date(a.date).getTime()
       const dateB = new Date(b.date).getTime()
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB

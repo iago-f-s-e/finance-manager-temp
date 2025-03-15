@@ -10,9 +10,10 @@ import { ImportExport } from "@/components/import-export"
 import { WalletList } from "@/components/wallet-list"
 import { useFinancialStore } from "@/lib/store"
 import { formatCurrency } from "@/lib/financial-utils"
-import { ArrowDownIcon, ArrowUpIcon, BarChart3Icon, DollarSignIcon, ListFilterIcon } from "lucide-react"
+import { ArrowDownIcon, ArrowUpIcon, BarChart3Icon, DollarSignIcon, ListFilterIcon, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export default function Dashboard() {
   const router = useRouter()
@@ -55,12 +56,20 @@ export default function Dashboard() {
     <div className="container mx-auto py-6 space-y-8">
       <div className="flex flex-col space-y-2">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Gestão Financeira</h1>
+          <Link href="/">
+            <h1 className="text-3xl font-bold tracking-tight hover:text-primary/80 transition-colors">
+              Gestão Financeira
+            </h1>
+          </Link>
           <div className="flex items-center gap-2">
             <ImportExport />
             <Button variant="outline" className="gap-1" onClick={() => router.push("/details")}>
               <ListFilterIcon className="h-4 w-4" />
               Detalhes e Filtros
+            </Button>
+            <Button variant="outline" className="gap-1" onClick={() => router.push("/effectuation")}>
+              <CheckCircle2 className="h-4 w-4" />
+              Efetivação
             </Button>
           </div>
         </div>

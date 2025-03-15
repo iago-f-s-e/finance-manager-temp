@@ -4,19 +4,19 @@ import { useState, useMemo } from "react"
 import { useFinancialStore } from "@/lib/store"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { WalletForm } from "@/components/wallet-form"
 import { WalletTransferForm } from "@/components/wallet-transfer-form"
 import { formatCurrency } from "@/lib/financial-utils"
 import { Edit, MoreHorizontal, Plus, Trash, ArrowRightLeft, History } from "lucide-react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -25,12 +25,23 @@ import { ptBR } from "date-fns/locale"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
+import { Checkbox } from "@/components/ui/checkbox"
 import type { Wallet, WalletTransfer } from "@/types/wallet"
 import * as LucideIcons from "lucide-react"
 
 export default function WalletsPage() {
-  const { wallets, incomes, expenses, transfers, addWallet, updateWallet, deleteWallet, transferBetweenWallets } =
-    useFinancialStore()
+  const {
+    wallets,
+    incomes,
+    expenses,
+    transfers,
+    addWallet,
+    updateWallet,
+    deleteWallet,
+    transferBetweenWallets,
+    updateTransaction,
+    deleteTransaction,
+  } = useFinancialStore()
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -38,6 +49,7 @@ export default function WalletsPage() {
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("wallets")
+  const [deleteTransactions, setDeleteTransactions] = useState(false)
   const [targetWalletId, setTargetWalletId] = useState<string>("")
 
   const totalBalance = wallets.reduce((sum, wallet) => sum + wallet.balance, 0)
@@ -58,16 +70,11 @@ export default function WalletsPage() {
 
   // Verificar se uma carteira tem transações vinculadas
   const hasTransactions = (walletId: string) => {
-    return (
-      incomes.some((t) => t.walletId === walletId) ||
-      expenses.some((t) => t.walletId === walletId) ||
-      transfers.some((t) => t.fromWalletId === walletId || t.toWalletId === walletId)
-    )
+    return [...incomes, ...expenses].some((t) => t.walletId === walletId)
   }
 
-  // Verificar se uma carteira tem transferências vinculadas
-  const hasTransfers = (walletId: string) => {
-    return transfers.some((t) => t.fromWalletId === walletId || t.toWalletId === walletId)
+  const getWalletTransactionsCount = (walletId: string): number => {
+    return [...incomes, ...expenses].filter((t) => t.walletId === walletId).length
   }
 
   const handleAddWallet = (wallet: Wallet) => {
@@ -85,10 +92,31 @@ export default function WalletsPage() {
     if (!selectedWallet) return
 
     try {
+      if (hasTransactions(selectedWallet.id)) {
+        if (deleteTransactions) {
+          // Delete all transactions associated with this wallet
+          const walletTransactions = [...incomes, ...expenses].filter((t) => t.walletId === selectedWallet.id)
+          walletTransactions.forEach((t) => deleteTransaction(t.id))
+        } else if (targetWalletId) {
+          // Transfer transactions to another wallet
+          const walletTransactions = [...incomes, ...expenses].filter((t) => t.walletId === selectedWallet.id)
+          walletTransactions.forEach((t) => {
+            updateTransaction({
+              ...t,
+              walletId: targetWalletId,
+            })
+          })
+        } else {
+          throw new Error("Selecione uma carteira de destino ou opte por excluir as transações")
+        }
+      }
+
       deleteWallet(selectedWallet.id)
       setIsDeleteDialogOpen(false)
       setSelectedWallet(null)
       setError(null)
+      setDeleteTransactions(false)
+      setTargetWalletId("")
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message)
@@ -254,8 +282,6 @@ export default function WalletsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => {
                           setSelectedWallet(wallet)
@@ -270,6 +296,9 @@ export default function WalletsPage() {
                         onClick={() => {
                           setSelectedWallet(wallet)
                           setIsDeleteDialogOpen(true)
+                          setError(null)
+                          setDeleteTransactions(false)
+                          setTargetWalletId("")
                         }}
                       >
                         <Trash className="mr-2 h-4 w-4" />
@@ -370,7 +399,7 @@ export default function WalletsPage() {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Excluir Carteira</DialogTitle>
-            <DialogDescription>Tem certeza que deseja excluir esta carteira?</DialogDescription>
+            <DialogDescription>Tem certeza que deseja excluir a carteira {selectedWallet?.name}?</DialogDescription>
           </DialogHeader>
 
           {selectedWallet && (
@@ -389,48 +418,77 @@ export default function WalletsPage() {
           )}
 
           {selectedWallet && hasTransactions(selectedWallet.id) && (
+            <>
+              <Alert variant="warning">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Atenção</AlertTitle>
+                <AlertDescription>
+                  Esta carteira possui {getWalletTransactionsCount(selectedWallet.id)} transações vinculadas. Escolha
+                  uma das opções abaixo:
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="delete-transactions"
+                    checked={deleteTransactions}
+                    onCheckedChange={(checked) => {
+                      setDeleteTransactions(checked === true)
+                      if (checked) setTargetWalletId("")
+                    }}
+                  />
+                  <label
+                    htmlFor="delete-transactions"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Excluir todas as transações vinculadas
+                  </label>
+                </div>
+
+                {!deleteTransactions && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Transferir transações para:</label>
+                    <Select value={targetWalletId} onValueChange={setTargetWalletId} disabled={deleteTransactions}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione uma carteira de destino" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {wallets
+                          .filter((w) => w.id !== selectedWallet?.id)
+                          .map((wallet) => (
+                            <SelectItem key={wallet.id} value={wallet.id}>
+                              {wallet.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Atenção</AlertTitle>
-              <AlertDescription>
-                Esta carteira possui transações vinculadas. Você precisa transferir ou excluir estas transações antes de
-                excluir a carteira.
-              </AlertDescription>
+              <AlertTitle>Erro</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
-          {selectedWallet && hasTransfers(selectedWallet.id) && (
-            <div className="space-y-4 mt-4">
-              <h3 className="text-sm font-medium">Transferir transações para outra carteira:</h3>
-              <Select value={targetWalletId} onValueChange={setTargetWalletId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma carteira de destino" />
-                </SelectTrigger>
-                <SelectContent>
-                  {wallets
-                    .filter((w) => w.id !== selectedWallet.id)
-                    .map((wallet) => (
-                      <SelectItem key={wallet.id} value={wallet.id}>
-                        {wallet.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 mt-4">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancelar
             </Button>
             <Button
               variant="destructive"
               onClick={handleDeleteWallet}
-              disabled={selectedWallet && hasTransactions(selectedWallet.id) && !targetWalletId}
+              disabled={selectedWallet && hasTransactions(selectedWallet.id) && !deleteTransactions && !targetWalletId}
             >
               Excluir
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

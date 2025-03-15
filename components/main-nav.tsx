@@ -1,99 +1,108 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, BarChart3, Settings, CheckCircle2, Wallet, Menu } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
-
-const navItems = [
-  {
-    title: "Dashboard",
-    href: "/",
-    icon: Home,
-  },
-  {
-    title: "Transações",
-    href: "/details",
-    icon: BarChart3,
-  },
-  {
-    title: "Efetivação",
-    href: "/effectuation",
-    icon: CheckCircle2,
-  },
-  {
-    title: "Carteiras",
-    href: "/wallets",
-    icon: Wallet,
-  },
-  {
-    title: "Configurações",
-    href: "/settings",
-    icon: Settings,
-  },
-]
+import { Button } from "@/components/ui/button"
+import {Sheet, SheetContent, SheetTitle, SheetTrigger} from "@/components/ui/sheet"
+import { Menu } from "lucide-react"
 
 export function MainNav() {
   const pathname = usePathname()
+  const [open, setOpen] = useState(false)
+
+  const routes = [
+    {
+      href: "/",
+      label: "Dashboard",
+      active: pathname === "/",
+    },
+    {
+      href: "/details",
+      label: "Transações",
+      active: pathname === "/details",
+    },
+    {
+      href: "/effectuation",
+      label: "Efetivação",
+      active: pathname === "/effectuation",
+    },
+    {
+      href: "/wallets",
+      label: "Carteiras",
+      active: pathname === "/wallets",
+    },
+    {
+      href: "/settings",
+      label: "Configurações",
+      active: pathname === "/settings",
+    },
+  ]
 
   return (
-    <>
-      {/* Mobile Navigation */}
-      <div className="md:hidden">
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="h-9 w-9">
+    <div className="flex w-full items-center">
+      <div className="flex items-center">
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild className="lg:hidden">
+            <Button variant="outline" size="icon" className="mr-2">
               <Menu className="h-5 w-5" />
-              <span className="sr-only">Toggle menu</span>
+              <span className="sr-only">Toggle Menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-[250px] sm:w-[300px]">
-            <nav className="flex flex-col gap-4 mt-8">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                      isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted",
-                    )}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    <span>{item.title}</span>
-                  </Link>
-                )
-              })}
-            </nav>
+          <SheetContent side="left" className="lg:hidden">
+            <SheetTitle className="hidden" />
+            <div className="px-2 pb-6 mr-6">
+              <Link href="/" className="flex items-center" onClick={() => setOpen(false)}>
+                <img
+                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-d5wbjAldm0nmo4hVPZCuxFeMcuNFEQ.png"
+                  alt="Logo"
+                  className="h-6 w-6"
+                />
+              </Link>
+            </div>
+            <div className="flex flex-col gap-3">
+              {routes.map((route) => (
+                <Link
+                  key={route.href}
+                  href={route.href}
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "text-sm font-medium transition-colors hover:text-primary",
+                    route.active ? "text-black dark:text-white" : "text-muted-foreground",
+                  )}
+                >
+                  {route.label}
+                </Link>
+              ))}
+            </div>
           </SheetContent>
         </Sheet>
+        <Link href="/" className="hidden items-center gap-2 mr-6 lg:flex">
+          <img
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-d5wbjAldm0nmo4hVPZCuxFeMcuNFEQ.png"
+            alt="Logo"
+            className="h-6 w-6"
+          />
+        </Link>
       </div>
-
-      {/* Desktop Navigation */}
-      <nav className="hidden md:flex items-center space-x-4 lg:space-x-6">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href
-
-          return (
+      <nav className="hidden lg:flex lg:flex-1 lg:justify-center">
+        <div className="flex gap-6">
+          {routes.map((route) => (
             <Link
-              key={item.href}
-              href={item.href}
+              key={route.href}
+              href={route.href}
               className={cn(
-                "flex items-center gap-2 text-sm font-medium transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground hover:text-primary",
+                "text-sm font-medium transition-colors hover:text-primary",
+                route.active ? "text-black dark:text-white" : "text-muted-foreground",
               )}
             >
-              <item.icon className="h-4 w-4" />
-              <span>{item.title}</span>
+              {route.label}
             </Link>
-          )
-        })}
+          ))}
+        </div>
       </nav>
-    </>
+    </div>
   )
 }
 

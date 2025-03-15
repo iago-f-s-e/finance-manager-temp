@@ -21,13 +21,15 @@ export function ImportExport() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const { toast } = useToast()
 
-  const { incomes, expenses, categories, importData } = useFinancialStore()
+  const { incomes, expenses, wallets, transfers, categories, importData } = useFinancialStore()
 
   const handleExport = (format: "json" | "csv") => {
     const data = {
       incomes,
       expenses,
       categories,
+      wallets,
+      transfers
     }
 
     let content: string
@@ -89,7 +91,7 @@ export function ImportExport() {
         const data = JSON.parse(content)
 
         // Validate the imported data
-        if (!data.incomes || !data.expenses || !data.categories) {
+        if (!data.incomes || !data.expenses || !data.categories || !data.wallets || !data.transfers) {
           throw new Error("Formato de arquivo inválido")
         }
 
@@ -106,6 +108,15 @@ export function ImportExport() {
             createdAt: new Date(expense.createdAt),
           })),
           categories: data.categories,
+          wallets: data.wallets.map((wallet: any) => ({
+            ...wallet,
+            createdAt: new Date(wallet.createdAt),
+          })),
+          transfers: data.transfers.map((transfer: any) => ({
+            ...transfer,
+            date: new Date(transfer.date),
+            createdAt: new Date(transfer.createdAt)
+          }))
         }
 
         // Import the data

@@ -1,5 +1,7 @@
 "use client"
 
+import { CardFooter } from "@/components/ui/card"
+
 import type React from "react"
 
 import { useState } from "react"
@@ -7,7 +9,7 @@ import { Trash2, Edit, Plus, Download, Upload, AlertCircle } from "lucide-react"
 import { useFinancialStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -26,8 +28,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import type { Category } from "@/types/category"
 import { useTheme } from "next-themes"
-import { defaultLocale, localeNames, locales } from "@/lib/i18n/config"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Code } from "@/components/ui/code";
 
 const categoryFormSchema = z.object({
   label: z.string().min(2, {
@@ -38,13 +41,83 @@ const categoryFormSchema = z.object({
   }),
 })
 
+const sampleData = `{
+  "wallets": [
+    {
+      "id": "wallet-id-1",
+      "name": "Conta Corrente",
+      "balance": 1500,
+      "color": "#3b82f6",
+      "icon": "wallet"
+    }
+  ],
+  "transfers": [
+    {
+      "id": "transfer-id-1",
+      "fromWalletId": "wallet-id-1",
+      "toWalletId": "wallet-id-2",
+      "amount": 500.00,
+      "description": "Transferência para poupança",
+      "date": "2023-05-20T00:00:00.000Z",
+      "createdAt": "2023-05-20T00:00:00.000Z"
+    }
+  ],
+  "categories": [
+    {
+      "id": "category-id-1",
+      "name": "Alimentacao",
+      "type": "expense",
+      "color": "#ef4444"
+    },
+    {
+      "id": "category-id-2",
+      "name": "Salario",
+      "type": "income",
+      "color": "#22c55e"
+    }
+  ],
+  "expenses": [
+    {
+      "id": "expense-id-1",
+      "type": "expense",
+      "name": "Supermercado",
+      "value": 150.75,
+      "date": "2023-05-15T00:00:00.000Z",
+      "category": "category-id-1",
+      "walletId": "wallet-id-1",
+      "description": "Compra mensal de supermercado",
+      "isEffectuated": true,
+      "effectuatedAt": "2023-05-15T00:00:00.000Z",
+      "createdAt": "2023-05-10T00:00:00.000Z"
+    }
+  ],
+  "incomes": [
+    {
+      "id": "income-id-1",
+      "type": "income",
+      "name": "Salario Maio",
+      "value": 5000.00,
+      "date": "2023-05-01T00:00:00.000Z",
+      "category": "category-id-2",
+      "walletId": "wallet-id-1",
+      "description": "Pagamento mensal da empresa",
+      "isRecurring": true,
+      "recurrenceType": "monthly",
+      "recurrenceCount": 12,
+      "isEffectuated": true,
+      "effectuatedAt": "2023-05-01T00:00:00.000Z",
+      "createdAt": "2023-04-25T00:00:00.000Z"
+    }
+  ]
+}`
+
 type CategoryFormValues = z.infer<typeof categoryFormSchema>
 
 export default function SettingsPage() {
-  const { categories, incomes, expenses, addCategory, updateCategory, deleteCategory, clearAllData, importData } =
+  const { categories, wallets, transfers, incomes, expenses, addCategory, updateCategory, deleteCategory, clearAllData, importData } =
     useFinancialStore()
   const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState("categories")
+  const [activeTab, setActiveTab] = useState("general")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -53,7 +126,6 @@ export default function SettingsPage() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
 
   const { theme, setTheme } = useTheme()
-  const [currentLocale, setCurrentLocale] = useState(defaultLocale)
 
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
@@ -157,6 +229,8 @@ export default function SettingsPage() {
       incomes,
       expenses,
       categories,
+      wallets,
+      transfers,
     }
 
     let content: string
@@ -218,7 +292,7 @@ export default function SettingsPage() {
         const data = JSON.parse(content)
 
         // Validate the imported data
-        if (!data.incomes || !data.expenses || !data.categories) {
+        if (!data.incomes || !data.expenses || !data.categories || !data.wallets || !data.transfers) {
           throw new Error("Formato de arquivo inválido")
         }
 
@@ -235,6 +309,15 @@ export default function SettingsPage() {
             createdAt: new Date(expense.createdAt),
           })),
           categories: data.categories,
+          wallets: data.wallets.map((wallet: any) => ({
+            ...wallet,
+            createdAt: new Date(wallet.createdAt),
+          })),
+          transfers: data.transfers.map((transfer: any) => ({
+            ...transfer,
+            date: new Date(transfer.date),
+            createdAt: new Date(transfer.createdAt)
+          }))
         }
 
         // Import the data
@@ -261,19 +344,43 @@ export default function SettingsPage() {
     <div className="container mx-auto py-6 space-y-8">
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie categorias e configurações do sistema</p>
+        <p className="text-muted-foreground">Personalize o sistema de acordo com suas preferências</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-4">
+          <TabsTrigger value="general">Geral</TabsTrigger>
           <TabsTrigger value="categories">Categorias</TabsTrigger>
           <TabsTrigger value="backup">Backup e Restauração</TabsTrigger>
-          <TabsTrigger value="system">Sistema</TabsTrigger>
-          <TabsTrigger value="appearance">Aparência</TabsTrigger>
+          <TabsTrigger value="about">Sobre</TabsTrigger>
         </TabsList>
 
-        {/* Categorias */}
-        <div className={activeTab === "categories" ? "" : "hidden"}>
+        <TabsContent value="general">
+          <Card>
+            <CardHeader>
+              <CardTitle>Tema</CardTitle>
+              <CardDescription>Escolha o tema de sua preferência</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RadioGroup value={theme} onValueChange={setTheme} className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="light" id="theme-light" />
+                  <Label htmlFor="theme-light">Claro</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="dark" id="theme-dark" />
+                  <Label htmlFor="theme-dark">Escuro</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="system" id="theme-system" />
+                  <Label htmlFor="theme-system">Sistema</Label>
+                </div>
+              </RadioGroup>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="categories">
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
@@ -389,10 +496,9 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </div>
-        </div>
+        </TabsContent>
 
-        {/* Backup e Restauração */}
-        <div className={activeTab === "backup" ? "" : "hidden"}>
+        <TabsContent value="backup">
           <Card>
             <CardHeader>
               <CardTitle>Backup e Restauração de Dados</CardTitle>
@@ -412,17 +518,17 @@ export default function SettingsPage() {
                 </ul>
               </div>
 
-              <Separator />
+              <Separator/>
 
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Exportar Dados</h3>
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={() => handleExport("json")} className="flex items-center gap-2">
-                    <Download className="h-4 w-4" />
+                    <Download className="h-4 w-4"/>
                     Exportar como JSON
                   </Button>
                   <Button onClick={() => handleExport("csv")} className="flex items-center gap-2">
-                    <Download className="h-4 w-4" />
+                    <Download className="h-4 w-4"/>
                     Exportar como CSV
                   </Button>
                 </div>
@@ -434,73 +540,21 @@ export default function SettingsPage() {
 
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Formato do Backup</h3>
-                <div className="rounded-md bg-muted p-4">
-                  <pre className="text-sm overflow-x-auto">
-                    {JSON.stringify(
-                      {
-                        incomes: [
-                          {
-                            id: "example-income",
-                            type: "income",
-                            name: "Salário",
-                            value: 5000,
-                            date: "2024-03-14T00:00:00.000Z",
-                            category: "salary",
-                            walletId: "main",
-                            isEffectuated: true,
-                            createdAt: "2024-03-14T00:00:00.000Z",
-                          },
-                        ],
-                        expenses: [
-                          {
-                            id: "example-expense",
-                            type: "expense",
-                            name: "Aluguel",
-                            value: 1500,
-                            date: "2024-03-14T00:00:00.000Z",
-                            category: "housing",
-                            walletId: "main",
-                            isEffectuated: true,
-                            createdAt: "2024-03-14T00:00:00.000Z",
-                          },
-                        ],
-                        categories: [
-                          {
-                            id: "salary",
-                            type: "income",
-                            value: "salary",
-                            label: "Salário",
-                            color: "#10b981",
-                          },
-                        ],
-                        wallets: [
-                          {
-                            id: "main",
-                            name: "Conta Principal",
-                            balance: 3500,
-                            color: "#3b82f6",
-                            icon: "wallet",
-                            createdAt: "2024-03-14T00:00:00.000Z",
-                          },
-                        ],
-                      },
-                      null,
-                      2,
-                    )}
-                  </pre>
+                <div className="bg-muted p-4 rounded-md overflow-auto max-h-80">
+                  <Code language="json">{sampleData}</Code>
                 </div>
               </div>
 
-              <Separator />
+              <Separator/>
 
               <div className="space-y-4">
                 <h3 className="text-lg font-medium">Importar Dados</h3>
                 <Button onClick={() => setIsImportDialogOpen(true)} className="flex items-center gap-2">
-                  <Upload className="h-4 w-4" />
+                  <Upload className="h-4 w-4"/>
                   Importar Backup
                 </Button>
                 <Alert>
-                  <AlertCircle className="h-4 w-4" />
+                  <AlertCircle className="h-4 w-4"/>
                   <AlertTitle>Atenção</AlertTitle>
                   <AlertDescription>
                     Importar um backup substituirá todos os seus dados atuais. Certifique-se de exportar seus dados
@@ -510,79 +564,38 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </TabsContent>
 
-        {/* Sistema */}
-        <div className={activeTab === "system" ? "" : "hidden"}>
+        <TabsContent value="about">
           <Card>
             <CardHeader>
-              <CardTitle>Configurações do Sistema</CardTitle>
-              <CardDescription>Gerencie as configurações gerais do sistema</CardDescription>
+              <CardTitle>Sobre o Sistema</CardTitle>
+              <CardDescription>Informações sobre o sistema de gestão financeira</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4">
               <div>
-                <h3 className="text-lg font-medium mb-2">Dados</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Gerencie os dados do sistema. Cuidado, algumas ações não podem ser desfeitas.
-                </p>
-
-                <Button variant="destructive" onClick={() => setIsResetDialogOpen(true)}>
-                  Resetar Todos os Dados
-                </Button>
+                <h3 className="font-medium">Sistema de Gestão Financeira</h3>
+                <p className="text-sm text-muted-foreground">Versão 1.0.0</p>
               </div>
-
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Atenção</AlertTitle>
-                <AlertDescription>
-                  Resetar os dados irá remover todas as transações e categorias personalizadas. Esta ação não pode ser
-                  desfeita.
-                </AlertDescription>
-              </Alert>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Appearance */}
-        <div className={activeTab === "appearance" ? "" : "hidden"}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Aparência</CardTitle>
-              <CardDescription>Personalize a aparência do sistema</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">Tema</h3>
-                <Select value={theme} onValueChange={setTheme}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tema" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Claro</SelectItem>
-                    <SelectItem value="dark">Escuro</SelectItem>
-                    <SelectItem value="system">Sistema</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium">Idioma</h3>
-                <Select value={currentLocale} onValueChange={setCurrentLocale}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o idioma" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locales.map((locale) => (
-                      <SelectItem key={locale} value={locale}>
-                        {localeNames[locale]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div>
+                <h3 className="font-medium">Desenvolvido por</h3>
+                <div className="flex items-center gap-2 mt-2">
+                  <img
+                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-d5wbjAldm0nmo4hVPZCuxFeMcuNFEQ.png"
+                    alt="SabbathDev Logo"
+                    className="h-8 w-8"
+                  />
+                  <span>SabbathDev</span>
+                </div>
               </div>
             </CardContent>
+            <CardFooter>
+              <p className="text-sm text-muted-foreground">
+                © {new Date().getFullYear()} SabbathDev. Todos os direitos reservados.
+              </p>
+            </CardFooter>
           </Card>
-        </div>
+        </TabsContent>
       </Tabs>
 
       {/* Add Category Dialog */}
@@ -600,13 +613,13 @@ export default function SettingsPage() {
               <FormField
                 control={form.control}
                 name="label"
-                render={({ field }) => (
+                render={({field}) => (
                   <FormItem>
                     <FormLabel>Nome da Categoria</FormLabel>
                     <FormControl>
                       <Input placeholder="Ex: Investimentos" {...field} />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage/>
                   </FormItem>
                 )}
               />

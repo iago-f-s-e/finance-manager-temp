@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Trash2, Edit, Plus, CreditCard, Wallet, ArrowRightLeft, AlertCircle, Target } from "lucide-react"
+import { Trash2, Edit, Plus, CreditCard, Wallet as WalletIcon, ArrowRightLeft, AlertCircle, Target } from "lucide-react"
 import { useFinancialStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,18 +13,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { WalletTransferForm } from "./wallet-transfer-form"
 import { handleInputMoneyMask } from "@/lib/mask"
-import type { Wallet as WalletType } from "@/types/wallet"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,23 +27,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Progress } from "@/components/ui/progress"
-
-const walletFormSchema = z.object({
-  name: z.string().min(2, {
-    message: "O nome deve ter pelo menos 2 caracteres.",
-  }),
-  balance: z.number().min(0, {
-    message: "O saldo deve ser um número positivo.",
-  }),
-  color: z.string().regex(/^#([0-9A-F]{6})$/i, {
-    message: "Cor inválida. Use formato hexadecimal (ex: #FF5733).",
-  }),
-  icon: z.string().min(1, {
-    message: "Selecione um ícone.",
-  }),
-})
-
-type WalletFormValues = z.infer<typeof walletFormSchema>
+import { WalletForm } from "@/components/wallet-form";
+import {Wallet} from "@/types/wallet";
 
 export function WalletList() {
   const { wallets, incomes, expenses, addWallet, updateWallet, deleteWallet, updateTransaction, deleteTransaction } =
@@ -64,36 +43,6 @@ export function WalletList() {
   const [deleteTransactions, setDeleteTransactions] = useState(false)
   const [targetWalletId, setTargetWalletId] = useState("")
 
-  const form = useForm<WalletFormValues>({
-    resolver: zodResolver(walletFormSchema),
-    defaultValues: {
-      name: "",
-      balance: 0,
-      color: "#3b82f6",
-      icon: "wallet",
-    },
-  })
-
-  const editForm = useForm<WalletFormValues>({
-    resolver: zodResolver(walletFormSchema),
-    defaultValues: {
-      name: selectedWallet?.name || "",
-      balance: selectedWallet?.balance || 0,
-      color: selectedWallet?.color || "#3b82f6",
-      icon: selectedWallet?.icon || "wallet",
-    },
-  })
-
-  // Reset form when selected wallet changes
-  if (selectedWallet && editForm.getValues().name !== selectedWallet.name) {
-    editForm.reset({
-      name: selectedWallet.name,
-      balance: selectedWallet.balance,
-      color: selectedWallet.color,
-      icon: selectedWallet.icon,
-    })
-  }
-
   const hasTransactions = (walletId: string): boolean => {
     return [...incomes, ...expenses].some((t) => t.walletId === walletId)
   }
@@ -102,44 +51,24 @@ export function WalletList() {
     return [...incomes, ...expenses].filter((t) => t.walletId === walletId).length
   }
 
-  const handleAddWallet = (data: WalletFormValues) => {
-    const newWallet: WalletType = {
-      id: crypto.randomUUID(),
-      name: data.name,
-      balance: data.balance,
-      color: data.color,
-      icon: data.icon,
-      createdAt: new Date(),
-    }
-
-    addWallet(newWallet)
-    form.reset()
+  const handleAddWallet = (wallet: Wallet) => {
+    addWallet(wallet)
     setIsAddDialogOpen(false)
 
     toast({
       title: "Carteira adicionada",
-      description: `A carteira ${data.name} foi adicionada com sucesso`,
+      description: `A carteira ${wallet.name} foi adicionada com sucesso`,
     })
   }
 
-  const handleEditWallet = (data: WalletFormValues) => {
-    if (!selectedWallet) return
-
-    const updatedWallet: WalletType = {
-      ...selectedWallet,
-      name: data.name,
-      balance: data.balance,
-      color: data.color,
-      icon: data.icon,
-    }
-
-    updateWallet(updatedWallet)
+  const handleEditWallet = (wallet: Wallet) => {
+    updateWallet(wallet)
     setIsEditDialogOpen(false)
     setSelectedWallet(null)
 
     toast({
       title: "Carteira atualizada",
-      description: `A carteira ${data.name} foi atualizada com sucesso`,
+      description: `A carteira ${wallet.name} foi atualizada com sucesso`,
     })
   }
 
@@ -187,7 +116,7 @@ export function WalletList() {
   }
 
   const walletIcons = [
-    { value: "wallet", label: "Carteira", icon: <Wallet className="h-4 w-4" /> },
+    { value: "wallet", label: "Carteira", icon: <WalletIcon className="h-4 w-4" /> },
     { value: "credit-card", label: "Cartão de Crédito", icon: <CreditCard className="h-4 w-4" /> },
   ]
 
@@ -220,7 +149,7 @@ export function WalletList() {
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-2">
                   {wallet.icon === "wallet" ? (
-                    <Wallet className="h-5 w-5" style={{ color: wallet.color }} />
+                    <WalletIcon className="h-5 w-5" style={{ color: wallet.color }} />
                   ) : (
                     <CreditCard className="h-5 w-5" style={{ color: wallet.color }} />
                   )}
@@ -306,93 +235,7 @@ export function WalletList() {
             <DialogDescription>Adicione uma nova carteira para gerenciar suas finanças</DialogDescription>
           </DialogHeader>
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleAddWallet)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome da Carteira</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Conta Corrente" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="balance"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Saldo Inicial</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        {...field}
-                        onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="color"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cor</FormLabel>
-                    <div className="flex gap-2">
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <div className="h-10 w-10 rounded-md border" style={{ backgroundColor: field.value }} />
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="icon"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ícone</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um ícone" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {walletIcons.map((icon) => (
-                          <SelectItem key={icon.value} value={icon.value}>
-                            <div className="flex items-center gap-2">
-                              {icon.icon}
-                              <span>{icon.label}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
-                <Button type="submit">Adicionar</Button>
-              </DialogFooter>
-            </form>
-          </Form>
+          <WalletForm onSubmit={handleAddWallet} onCancel={() => setIsAddDialogOpen(false)} />
         </DialogContent>
       </Dialog>
 
@@ -404,93 +247,14 @@ export function WalletList() {
             <DialogDescription>Atualize os detalhes da carteira selecionada</DialogDescription>
           </DialogHeader>
 
-          <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(handleEditWallet)} className="space-y-4">
-              <FormField
-                control={editForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome da Carteira</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Conta Corrente" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          {selectedWallet && (
+            <WalletForm
+              wallet={selectedWallet}
+              onSubmit={handleEditWallet}
+              onCancel={() => setIsEditDialogOpen(false)}
+            />
+          )}
 
-              <FormField
-                control={editForm.control}
-                name="balance"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Saldo</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                        {...field}
-                        onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={editForm.control}
-                name="color"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cor</FormLabel>
-                    <div className="flex gap-2">
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <div className="h-10 w-10 rounded-md border" style={{ backgroundColor: field.value }} />
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={editForm.control}
-                name="icon"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ícone</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione um ícone" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {walletIcons.map((icon) => (
-                          <SelectItem key={icon.value} value={icon.value}>
-                            <div className="flex items-center gap-2">
-                              {icon.icon}
-                              <span>{icon.label}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
-                <Button type="submit">Atualizar</Button>
-              </DialogFooter>
-            </form>
-          </Form>
         </DialogContent>
       </Dialog>
 

@@ -192,6 +192,10 @@ export function GoalSimulation({ wallet }: GoalSimulationProps) {
         newDate = addMonths(new Date(), 6)
         break
       case "1-year":
+        newDate = addYears(new Date(), 1)
+        break
+      case "custom":
+        return // Don't update the date when selecting custom
       default:
         newDate = addYears(new Date(), 1)
         break
@@ -285,6 +289,7 @@ export function GoalSimulation({ wallet }: GoalSimulationProps) {
                       <SelectItem value="3-months">Em 3 meses</SelectItem>
                       <SelectItem value="6-months">Em 6 meses</SelectItem>
                       <SelectItem value="1-year">Em 1 ano</SelectItem>
+                      <SelectItem value="custom">Data personalizada</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -295,17 +300,17 @@ export function GoalSimulation({ wallet }: GoalSimulationProps) {
                         {targetDate ? format(targetDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
+                    <PopoverContent className="w-auto p-0" align="end">
                       <Calendar
                         mode="single"
                         selected={targetDate}
                         onSelect={(date) => {
                           setTargetDate(date)
                           setShowCalendar(false)
-                          setPredefinedPeriod("")
+                          setPredefinedPeriod("custom")
                         }}
                         initialFocus
-                        disabled={(date) => date < new Date()}
+                        disabled={(date) => date <= new Date()}
                       />
                     </PopoverContent>
                   </Popover>

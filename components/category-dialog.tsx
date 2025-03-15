@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import {PropsWithChildren, useCallback} from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -12,12 +12,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
+  DialogClose
 } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useFinancialStore } from "@/lib/store"
 import type { Category } from "@/types/category"
 import { ColorPicker } from "@/components/ui/color-picker"
+import type {TransactionType} from "@/types/transaction";
 
 const formSchema = z.object({
   label: z.string().min(2, {
@@ -31,15 +34,13 @@ const formSchema = z.object({
   }),
 })
 
-interface CategoryDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+interface CategoryDialogProps extends PropsWithChildren {
+  type: TransactionType,
   category?: Category
   onSubmit: (category: Category) => void
 }
 
-export function CategoryDialog({ open, onOpenChange, category, onSubmit }: CategoryDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+export function CategoryDialog({ category, onSubmit, children, type }: CategoryDialogProps) {
   const { categories } = useFinancialStore()
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -56,16 +57,13 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Categ
     },
   })
 
-  function handleSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true)
-
+  const handleSubmit = useCallback(function handleSubmit(values: z.infer<typeof formSchema>) {
     // Verificar se já existe uma categoria com o mesmo valor
     if (!category && categories.some((c) => c.value === values.value)) {
       form.setError("value", {
         type: "manual",
         message: "Já existe uma categoria com este identificador.",
       })
-      setIsSubmitting(false)
       return
     }
 
@@ -74,16 +72,18 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Categ
       label: values.label,
       value: values.value,
       color: values.color,
+      type,
     }
 
     onSubmit(newCategory)
-    setIsSubmitting(false)
-    onOpenChange(false)
     form.reset()
-  }
+  }, [category, type])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog>
+      <DialogTrigger asChild>
+        {children}
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{category ? "Editar" : "Adicionar"} Categoria</DialogTitle>
@@ -136,17 +136,24 @@ export function CategoryDialog({ open, onOpenChange, category, onSubmit }: Categ
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
-                    <ColorPicker color={field.value} onChange={(color) => field.onChange(color)} />
+                    <ColorPicker
+                      color={field.value}
+                      onChange={(color) => field.onChange(color)}
+                      className="flex-shrink-0"
+                    />
                   </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancelar
+                </Button>
+              </DialogClose>
+
+              <Button type="submit">
                 {category ? "Atualizar" : "Adicionar"}
               </Button>
             </DialogFooter>

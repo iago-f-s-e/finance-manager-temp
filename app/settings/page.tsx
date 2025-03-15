@@ -31,15 +31,7 @@ import { useTheme } from "next-themes"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Code } from "@/components/ui/code";
-
-const categoryFormSchema = z.object({
-  label: z.string().min(2, {
-    message: "O nome deve ter pelo menos 2 caracteres.",
-  }),
-  color: z.string().regex(/^#([0-9A-F]{6})$/i, {
-    message: "Cor inválida. Use formato hexadecimal (ex: #FF5733).",
-  }),
-})
+import {CategoryDialog} from "@/components/category-dialog";
 
 const sampleData = `{
   "wallets": [
@@ -111,89 +103,34 @@ const sampleData = `{
   ]
 }`
 
-type CategoryFormValues = z.infer<typeof categoryFormSchema>
-
 export default function SettingsPage() {
   const { categories, wallets, transfers, incomes, expenses, addCategory, updateCategory, deleteCategory, clearAllData, importData } =
     useFinancialStore()
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("general")
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
 
   const { theme, setTheme } = useTheme()
 
-  const form = useForm<CategoryFormValues>({
-    resolver: zodResolver(categoryFormSchema),
-    defaultValues: {
-      label: "",
-      color:
-        "#" +
-        Math.floor(Math.random() * 16777215)
-          .toString(16)
-          .padStart(6, "0"),
-    },
-  })
-
-  const editForm = useForm<CategoryFormValues>({
-    resolver: zodResolver(categoryFormSchema),
-    defaultValues: {
-      label: selectedCategory?.label || "",
-      color: selectedCategory?.color || "#000000",
-    },
-  })
-
-  // Reset form when selected category changes
-  if (selectedCategory && editForm.getValues().label !== selectedCategory.label) {
-    editForm.reset({
-      label: selectedCategory.label,
-      color: selectedCategory.color || "#000000",
-    })
-  }
-
-  const handleAddCategory = (data: CategoryFormValues) => {
+  const handleAddCategory = (data: Category) => {
     const newCategory: Category = {
       id: crypto.randomUUID(),
-      type: activeTab === "income" ? "income" : "expense",
+      type: data.type,
       value: data.label.toLowerCase().replace(/\s+/g, "_"),
       label: data.label,
       color: data.color,
     }
 
     addCategory(newCategory)
-    form.reset({
-      label: "",
-      color:
-        "#" +
-        Math.floor(Math.random() * 16777215)
-          .toString(16)
-          .padStart(6, "0"),
-    })
-    setIsAddDialogOpen(false)
-
     toast({
       title: "Categoria adicionada",
       description: `A categoria ${data.label} foi adicionada com sucesso.`,
     })
   }
 
-  const handleEditCategory = (data: CategoryFormValues) => {
-    if (!selectedCategory) return
-
-    const updatedCategory: Category = {
-      ...selectedCategory,
-      label: data.label,
-      value: data.label.toLowerCase().replace(/\s+/g, "_"),
-      color: data.color,
-    }
-
-    updateCategory(updatedCategory)
-    setIsEditDialogOpen(false)
-    setSelectedCategory(null)
+  const handleEditCategory = (data: Category) => {
+    updateCategory(data)
 
     toast({
       title: "Categoria atualizada",
@@ -201,16 +138,12 @@ export default function SettingsPage() {
     })
   }
 
-  const handleDeleteCategory = () => {
-    if (!selectedCategory) return
-
-    deleteCategory(selectedCategory.id)
-    setIsDeleteDialogOpen(false)
-    setSelectedCategory(null)
+  const handleDeleteCategory = (category: Category) => {
+    deleteCategory(category.id)
 
     toast({
       title: "Categoria excluída",
-      description: `A categoria ${selectedCategory.label} foi excluída com sucesso.`,
+      description: `A categoria ${category.label} foi excluída com sucesso.`,
     })
   }
 
@@ -389,16 +322,13 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent>
                 <div className="mb-4">
-                  <Button
-                    onClick={() => {
-                      setActiveTab("income")
-                      setIsAddDialogOpen(true)
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Adicionar Categoria
-                  </Button>
+                  <CategoryDialog type="income" onSubmit={handleAddCategory}>
+                    <Button className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Adicionar Categoria
+                    </Button>
+                  </CategoryDialog>
+
                 </div>
 
                 <div className="space-y-2">
@@ -411,22 +341,17 @@ export default function SettingsPage() {
                           <span>{category.label}</span>
                         </div>
                         <div className="flex items-center gap-2">
+                          <CategoryDialog type={category.type} category={category} onSubmit={handleEditCategory}>
+                            <Button variant="ghost" size="icon">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </CategoryDialog>
+
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => {
-                              setSelectedCategory(category)
-                              setIsEditDialogOpen(true)
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setSelectedCategory(category)
-                              setIsDeleteDialogOpen(true)
+                              handleDeleteCategory(category)
                             }}
                             disabled={category.isDefault}
                           >
@@ -446,16 +371,12 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent>
                 <div className="mb-4">
-                  <Button
-                    onClick={() => {
-                      setActiveTab("expense")
-                      setIsAddDialogOpen(true)
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Adicionar Categoria
-                  </Button>
+                  <CategoryDialog type="expense" onSubmit={handleAddCategory}>
+                    <Button className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Adicionar Categoria
+                    </Button>
+                  </CategoryDialog>
                 </div>
 
                 <div className="space-y-2">
@@ -468,22 +389,17 @@ export default function SettingsPage() {
                           <span>{category.label}</span>
                         </div>
                         <div className="flex items-center gap-2">
+                          <CategoryDialog type={category.type} category={category} onSubmit={handleEditCategory}>
+                            <Button variant="ghost" size="icon">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </CategoryDialog>
+
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => {
-                              setSelectedCategory(category)
-                              setIsEditDialogOpen(true)
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setSelectedCategory(category)
-                              setIsDeleteDialogOpen(true)
+                              handleDeleteCategory(category)
                             }}
                             disabled={category.isDefault}
                           >
@@ -597,140 +513,6 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Add Category Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Adicionar Categoria</DialogTitle>
-            <DialogDescription>
-              Crie uma nova categoria para {activeTab === "income" ? "entradas" : "saídas"}.
-            </DialogDescription>
-          </DialogHeader>
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleAddCategory)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="label"
-                render={({field}) => (
-                  <FormItem>
-                    <FormLabel>Nome da Categoria</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Investimentos" {...field} />
-                    </FormControl>
-                    <FormMessage/>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="color"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cor</FormLabel>
-                    <div className="flex gap-2">
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <div className="h-10 w-10 rounded-md border" style={{ backgroundColor: field.value }} />
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
-                <Button type="submit">Adicionar Categoria</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Category Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Categoria</DialogTitle>
-            <DialogDescription>Atualize os detalhes da categoria selecionada.</DialogDescription>
-          </DialogHeader>
-
-          <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(handleEditCategory)} className="space-y-4">
-              <FormField
-                control={editForm.control}
-                name="label"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nome da Categoria</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Investimentos" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={editForm.control}
-                name="color"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cor</FormLabel>
-                    <div className="flex gap-2">
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <div className="h-10 w-10 rounded-md border" style={{ backgroundColor: field.value }} />
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter>
-                <Button type="submit">Atualizar Categoria</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Category Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Excluir Categoria</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja excluir esta categoria? Esta ação não pode ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex items-center gap-2 p-3 border rounded-md">
-            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: selectedCategory?.color }} />
-            <span>{selectedCategory?.label}</span>
-          </div>
-
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Atenção</AlertTitle>
-            <AlertDescription>
-              Transações que usam esta categoria não serão excluídas, mas perderão a referência à categoria.
-            </AlertDescription>
-          </Alert>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteCategory}>
-              Excluir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Reset Data Dialog */}
       <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>

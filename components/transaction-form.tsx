@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { CalendarIcon } from "lucide-react"
+import {CalendarIcon, Plus} from "lucide-react"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
@@ -185,8 +185,8 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
           <FormField
             control={form.control}
             name="date"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
+            render={({field}) => (
+              <FormItem className="flex flex-col justify-between">
                 <FormLabel>Data</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -195,47 +195,53 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
                         variant={"outline"}
                         className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                       >
-                        {field.value ? format(field.value, "PPP", { locale: ptBR }) : <span>Selecione uma data</span>}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        {field.value ? format(field.value, "PPP", {locale: ptBR}) : <span>Selecione uma data</span>}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50"/>
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                    <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus/>
                   </PopoverContent>
                 </Popover>
-                <FormMessage />
+                <FormMessage/>
               </FormItem>
             )}
           />
 
+
+
           <FormField
             control={form.control}
             name="category"
-            render={({ field }) => (
+            render={({field}) => (
               <FormItem>
                 <div className="flex items-center justify-between">
                   <FormLabel>Categoria</FormLabel>
-                  <CategoryDialog type={type} onAddCategory={handleAddCategory} />
+                  <CategoryDialog type={type} onAddCategory={handleAddCategory}>
+                    <Plus className="cursor-pointer" />
+                  </CategoryDialog>
                 </div>
+
+
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma categoria" />
+                      <SelectValue placeholder="Selecione uma categoria"/>
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     {categories.map((category) => (
                       <SelectItem key={category.value} value={category.value}>
                         <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: category.color }} />
+                          <div className="h-3 w-3 rounded-full" style={{backgroundColor: category.color}}/>
                           {category.label}
                         </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <FormMessage />
+                <FormMessage/>
               </FormItem>
             )}
           />
@@ -244,7 +250,7 @@ export function TransactionForm({ type, transaction, onSubmit, onCancel }: Trans
         <FormField
           control={form.control}
           name="walletId"
-          render={({ field }) => (
+          render={({field}) => (
             <FormItem>
               <FormLabel>Carteira</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>

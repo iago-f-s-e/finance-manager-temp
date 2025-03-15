@@ -15,7 +15,7 @@ import {
 import { WalletForm } from "@/components/wallet-form"
 import { WalletTransferForm } from "@/components/wallet-transfer-form"
 import { formatCurrency } from "@/lib/financial-utils"
-import { Edit, MoreHorizontal, Plus, Trash, ArrowRightLeft, History, Target } from "lucide-react"
+import { Edit, MoreHorizontal, Plus, Trash, ArrowRightLeft, History, Target, Calculator } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
@@ -323,28 +323,27 @@ export default function WalletsPage() {
                   </div>
 
                   {wallet.goal && (
-                    <div className="mt-2 space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="flex items-center gap-1">
-                          <Target className="h-3 w-3" />
+                    <div className="mt-2 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="flex items-center gap-1 text-sm">
+                          <Target className="h-4 w-4" />
                           Meta: {formatCurrency(wallet.goal.value)}
                         </span>
-                        <span>{Math.round(calculateGoalProgress(wallet))}%</span>
+                        <span className="text-sm font-medium">{Math.round(calculateGoalProgress(wallet))}%</span>
                       </div>
-                      <Progress value={calculateGoalProgress(wallet)} className="h-1.5" />
-                      <div className="flex justify-end">
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="h-auto p-0 text-xs"
-                          onClick={() => {
-                            setSelectedWallet(wallet)
-                            setIsGoalSimulationDialogOpen(true)
-                          }}
-                        >
-                          Simular meta
-                        </Button>
-                      </div>
+                      <Progress value={calculateGoalProgress(wallet)} className="h-2" />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="w-full mt-2"
+                        onClick={() => {
+                          setSelectedWallet(wallet)
+                          setIsGoalSimulationDialogOpen(true)
+                        }}
+                      >
+                        <Calculator className="mr-2 h-4 w-4" />
+                        Simular meta
+                      </Button>
                     </div>
                   )}
                 </CardContent>
@@ -455,7 +454,7 @@ export default function WalletsPage() {
 
           {selectedWallet && hasTransactions(selectedWallet.id) && (
             <>
-              <Alert variant="warning">
+              <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Atenção</AlertTitle>
                 <AlertDescription>
@@ -520,7 +519,7 @@ export default function WalletsPage() {
             <Button
               variant="destructive"
               onClick={handleDeleteWallet}
-              disabled={selectedWallet && hasTransactions(selectedWallet.id) && !deleteTransactions && !targetWalletId}
+              disabled={Boolean(selectedWallet && hasTransactions(selectedWallet.id) && !deleteTransactions && !targetWalletId)}
             >
               Excluir
             </Button>

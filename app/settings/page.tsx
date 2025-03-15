@@ -25,6 +25,9 @@ import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import type { Category } from "@/types/category"
+import { useTheme } from "next-themes"
+import { defaultLocale, localeNames, locales } from "@/lib/i18n/config"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const categoryFormSchema = z.object({
   label: z.string().min(2, {
@@ -48,6 +51,9 @@ export default function SettingsPage() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
+
+  const { theme, setTheme } = useTheme()
+  const [currentLocale, setCurrentLocale] = useState(defaultLocale)
 
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
@@ -263,6 +269,7 @@ export default function SettingsPage() {
           <TabsTrigger value="categories">Categorias</TabsTrigger>
           <TabsTrigger value="backup">Backup e Restauração</TabsTrigger>
           <TabsTrigger value="system">Sistema</TabsTrigger>
+          <TabsTrigger value="appearance">Aparência</TabsTrigger>
         </TabsList>
 
         {/* Categorias */}
@@ -425,6 +432,65 @@ export default function SettingsPage() {
                 </p>
               </div>
 
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Formato do Backup</h3>
+                <div className="rounded-md bg-muted p-4">
+                  <pre className="text-sm overflow-x-auto">
+                    {JSON.stringify(
+                      {
+                        incomes: [
+                          {
+                            id: "example-income",
+                            type: "income",
+                            name: "Salário",
+                            value: 5000,
+                            date: "2024-03-14T00:00:00.000Z",
+                            category: "salary",
+                            walletId: "main",
+                            isEffectuated: true,
+                            createdAt: "2024-03-14T00:00:00.000Z",
+                          },
+                        ],
+                        expenses: [
+                          {
+                            id: "example-expense",
+                            type: "expense",
+                            name: "Aluguel",
+                            value: 1500,
+                            date: "2024-03-14T00:00:00.000Z",
+                            category: "housing",
+                            walletId: "main",
+                            isEffectuated: true,
+                            createdAt: "2024-03-14T00:00:00.000Z",
+                          },
+                        ],
+                        categories: [
+                          {
+                            id: "salary",
+                            type: "income",
+                            value: "salary",
+                            label: "Salário",
+                            color: "#10b981",
+                          },
+                        ],
+                        wallets: [
+                          {
+                            id: "main",
+                            name: "Conta Principal",
+                            balance: 3500,
+                            color: "#3b82f6",
+                            icon: "wallet",
+                            createdAt: "2024-03-14T00:00:00.000Z",
+                          },
+                        ],
+                      },
+                      null,
+                      2,
+                    )}
+                  </pre>
+                </div>
+              </div>
+
               <Separator />
 
               <div className="space-y-4">
@@ -473,6 +539,47 @@ export default function SettingsPage() {
                   desfeita.
                 </AlertDescription>
               </Alert>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Appearance */}
+        <div className={activeTab === "appearance" ? "" : "hidden"}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Aparência</CardTitle>
+              <CardDescription>Personalize a aparência do sistema</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium">Tema</h3>
+                <Select value={theme} onValueChange={setTheme}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tema" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="light">Claro</SelectItem>
+                    <SelectItem value="dark">Escuro</SelectItem>
+                    <SelectItem value="system">Sistema</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium">Idioma</h3>
+                <Select value={currentLocale} onValueChange={setCurrentLocale}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o idioma" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locales.map((locale) => (
+                      <SelectItem key={locale} value={locale}>
+                        {localeNames[locale]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </CardContent>
           </Card>
         </div>

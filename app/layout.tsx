@@ -1,16 +1,27 @@
 import type React from "react"
 import "@/app/globals.css"
 import { Inter } from "next/font/google"
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { FinancialStoreProvider } from "@/lib/store-provider"
 import { MainNav } from "@/components/main-nav"
+import { Footer } from "@/components/footer"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
   title: "Sistema de Gestão Financeira",
   description: "Gerencie suas finanças pessoais com facilidade",
+  icons: {
+    icon: [
+      {
+        url: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-d5wbjAldm0nmo4hVPZCuxFeMcuNFEQ.png",
+        href: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-d5wbjAldm0nmo4hVPZCuxFeMcuNFEQ.png",
+      },
+    ],
+  },
     generator: 'v0.dev'
 }
 
@@ -33,10 +44,13 @@ export default function RootLayout({
                 </div>
               </header>
               <main className="flex-1">{children}</main>
+              <Footer />
             </div>
             <Toaster />
           </FinancialStoreProvider>
         </ThemeProvider>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   )

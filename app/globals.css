@@ -33,12 +33,6 @@
     --ring: 222.2 84% 4.9%;
 
     --radius: 0.5rem;
-
-    --chart-1: 142 76% 36%;
-    --chart-2: 0 84% 60%;
-    --chart-3: 217 91% 60%;
-    --chart-4: 271 91% 65%;
-    --chart-5: 338 85% 60%;
   }
 
   .dark {
@@ -69,12 +63,38 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+  }
 
-    --chart-1: 142 70% 50%;
-    --chart-2: 0 70% 50%;
-    --chart-3: 217 70% 50%;
-    --chart-4: 271 70% 50%;
-    --chart-5: 338 70% 50%;
+  /* Scrollbar Styling */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+    border-radius: 5px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 5px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+
+  .dark ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
   }
 }
 

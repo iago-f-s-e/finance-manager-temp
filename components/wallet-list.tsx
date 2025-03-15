@@ -21,8 +21,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import type { Wallet, WalletTransfer } from "@/types/wallet"
 import * as LucideIcons from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export function WalletList() {
+  const router = useRouter()
   const { wallets, addWallet, updateWallet, deleteWallet, transferBetweenWallets } = useFinancialStore()
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -79,7 +81,8 @@ export function WalletList() {
   const renderWalletIcon = (iconName: string) => {
     // Corrigindo o problema de renderização de ícones
     // Usando o nome exato do componente do Lucide
-    const iconKey = (iconName.charAt(0).toUpperCase() + iconName.slice(1)).split("-")
+    const iconKey = (iconName.charAt(0).toUpperCase() + iconName.slice(1))
+      .split("-")
       .map((part, i) => (i === 0 ? part : part.charAt(0).toUpperCase() + part.slice(1)))
       .join("")
 
@@ -93,6 +96,9 @@ export function WalletList() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold">Carteiras</h2>
         <div className="flex gap-2">
+          <Button onClick={() => router.push("/wallets")} variant="outline">
+            Ver Todas
+          </Button>
           <Button onClick={() => setIsTransferDialogOpen(true)} className="flex items-center gap-2">
             <ArrowRightLeft className="h-4 w-4" />
             Transferir

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, BarChart3, Settings, CheckCircle2, Wallet, ArrowRightLeft, Menu } from "lucide-react"
+import { Home, BarChart3, Settings, CheckCircle2, Wallet, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
@@ -14,7 +14,7 @@ const navItems = [
     icon: Home,
   },
   {
-    title: "Detalhes e Filtros",
+    title: "Transações",
     href: "/details",
     icon: BarChart3,
   },
@@ -27,11 +27,6 @@ const navItems = [
     title: "Carteiras",
     href: "/wallets",
     icon: Wallet,
-  },
-  {
-    title: "Transferências",
-    href: "/transfers",
-    icon: ArrowRightLeft,
   },
   {
     title: "Configurações",

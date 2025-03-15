@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { format } from "date-fns"
+import { format, addMonths } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { CalendarIcon } from "lucide-react"
 
@@ -14,7 +14,6 @@ import { Calendar } from "@/components/ui/calendar"
 import { Checkbox } from "@/components/ui/checkbox"
 import { FinancialChart } from "@/components/financial-chart"
 import { TransactionList } from "@/components/transaction-list"
-import { ImportExport } from "@/components/import-export"
 import { useFinancialStore } from "@/lib/store"
 import type { TransactionFilters } from "@/types/transaction"
 import { filterTransactions, getCurrentMonthDateRange, formatCurrency } from "@/lib/financial-utils"
@@ -105,8 +104,7 @@ export default function DetailsPage() {
     <div className="container mx-auto py-6 space-y-8">
       <div className="flex flex-col space-y-2">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Detalhes Financeiros</h1>
-          <ImportExport />
+          <h1 className="text-3xl font-bold tracking-tight">Transações</h1>
         </div>
         <p className="text-muted-foreground">
           Analise detalhadamente suas finanças e aplique filtros para visualizar dados específicos
@@ -186,7 +184,7 @@ export default function DetailsPage() {
                 </PopoverContent>
               </Popover>
 
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-wrap gap-2 mt-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -214,6 +212,34 @@ export default function DetailsPage() {
                   }}
                 >
                   Ano Atual
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const now = new Date()
+                    const endDate = addMonths(now, 3)
+                    setDateRange({
+                      from: now,
+                      to: endDate,
+                    })
+                  }}
+                >
+                  Próximos 3 meses
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const now = new Date()
+                    const endDate = addMonths(now, 6)
+                    setDateRange({
+                      from: now,
+                      to: endDate,
+                    })
+                  }}
+                >
+                  Próximos 6 meses
                 </Button>
               </div>
             </div>
@@ -275,19 +301,6 @@ export default function DetailsPage() {
               </div>
             </div>
 
-            <Button
-              className="mt-2 w-full"
-              size="sm"
-              onClick={() => {
-                setFilters((prev) => ({
-                  ...prev,
-                  categories: selectedCategories,
-                }))
-              }}
-            >
-              Aplicar Filtros de Categoria
-            </Button>
-
             <Button className="w-full" onClick={applyFilters}>
               Aplicar Filtros
             </Button>
@@ -309,8 +322,8 @@ export default function DetailsPage() {
                 incomes={filteredIncomes}
                 expenses={filteredExpenses}
                 categories={categories}
-                filters={filters}
                 wallets={wallets}
+                filters={filters}
               />
             </CardContent>
           </Card>

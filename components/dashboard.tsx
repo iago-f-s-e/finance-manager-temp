@@ -6,12 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FinancialChart } from "@/components/financial-chart"
 import { TransactionList } from "@/components/transaction-list"
 import { TransactionForm } from "@/components/transaction-form"
-import { ImportExport } from "@/components/import-export"
 import { WalletList } from "@/components/wallet-list"
 import { useFinancialStore } from "@/lib/store"
 import { formatCurrency } from "@/lib/financial-utils"
-import { ArrowDownIcon, ArrowUpIcon, BarChart3Icon, DollarSignIcon, ListFilterIcon, CheckCircle2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { ArrowDownIcon, ArrowUpIcon, DollarSignIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
@@ -24,7 +22,6 @@ export default function Dashboard() {
     totalIncome: 0,
     totalExpense: 0,
     balance: 0,
-    accumulated: 0,
   })
 
   useEffect(() => {
@@ -35,17 +32,11 @@ export default function Dashboard() {
 
     // Verificar se os valores realmente mudaram antes de atualizar o estado
     setTotals((prev) => {
-      if (
-        prev.totalIncome !== totalIncome ||
-        prev.totalExpense !== totalExpense ||
-        prev.balance !== balance ||
-        prev.accumulated !== balance
-      ) {
+      if (prev.totalIncome !== totalIncome || prev.totalExpense !== totalExpense || prev.balance !== balance) {
         return {
           totalIncome,
           totalExpense,
           balance,
-          accumulated: balance,
         }
       }
       return prev
@@ -61,22 +52,11 @@ export default function Dashboard() {
               Gestão Financeira
             </h1>
           </Link>
-          <div className="flex items-center gap-2">
-            <ImportExport />
-            <Button variant="outline" className="gap-1" onClick={() => router.push("/details")}>
-              <ListFilterIcon className="h-4 w-4" />
-              Detalhes e Filtros
-            </Button>
-            <Button variant="outline" className="gap-1" onClick={() => router.push("/effectuation")}>
-              <CheckCircle2 className="h-4 w-4" />
-              Efetivação
-            </Button>
-          </div>
         </div>
         <p className="text-muted-foreground">Gerencie suas finanças, acompanhe receitas e despesas</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Entradas Totais</CardTitle>
@@ -102,15 +82,6 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totals.balance)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Acumulado</CardTitle>
-            <BarChart3Icon className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totals.accumulated)}</div>
           </CardContent>
         </Card>
       </div>

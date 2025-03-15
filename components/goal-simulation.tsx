@@ -11,7 +11,6 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon, Calculator } from "lucide-react"
 import { format, addMonths, addYears, differenceInDays, differenceInMonths } from "date-fns"
-import { ptBR } from "date-fns/locale"
 import { handleInputMoneyMask, handleRemoveMoneyMask } from "@/lib/mask"
 import { formatCurrency } from "@/lib/financial-utils"
 import type { Wallet } from "@/types/wallet"
@@ -27,7 +26,6 @@ export function GoalSimulation({ wallet }: GoalSimulationProps) {
   const [frequency, setFrequency] = useState<FrequencyType>("monthly")
   const [amount, setAmount] = useState<string>("R$ 100,00")
   const [targetDate, setTargetDate] = useState<Date | undefined>(addYears(new Date(), 1))
-  const [predefinedPeriod, setPredefinedPeriod] = useState<string>("1-year")
   const [showCalendar, setShowCalendar] = useState<boolean>(false)
   const [simulationResult, setSimulationResult] = useState<string | null>(null)
 
@@ -174,34 +172,10 @@ export function GoalSimulation({ wallet }: GoalSimulationProps) {
     )
   }
 
-  const handlePredefinedPeriodChange = (value: string) => {
-    setPredefinedPeriod(value)
-    let newDate: Date
-
-    switch (value) {
-      case "1-month":
-        newDate = addMonths(new Date(), 1)
-        break
-      case "2-months":
-        newDate = addMonths(new Date(), 2)
-        break
-      case "3-months":
-        newDate = addMonths(new Date(), 3)
-        break
-      case "6-months":
-        newDate = addMonths(new Date(), 6)
-        break
-      case "1-year":
-        newDate = addYears(new Date(), 1)
-        break
-      case "custom":
-        return // Don't update the date when selecting custom
-      default:
-        newDate = addYears(new Date(), 1)
-        break
-    }
-
+  const handleQuickDateSelect = (months: number) => {
+    const newDate = addMonths(new Date(), months)
     setTargetDate(newDate)
+    setShowCalendar(false)
   }
 
   const getFrequencyLabel = (freq: FrequencyType): string => {
@@ -278,50 +252,72 @@ export function GoalSimulation({ wallet }: GoalSimulationProps) {
             <div className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="target-date">Quando você quer atingir a meta?</Label>
-                <div className="flex gap-2">
-                  <Select value={predefinedPeriod} onValueChange={handlePredefinedPeriodChange}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Selecione um período" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1-month">Em 1 mês</SelectItem>
-                      <SelectItem value="2-months">Em 2 meses</SelectItem>
-                      <SelectItem value="3-months">Em 3 meses</SelectItem>
-                      <SelectItem value="6-months">Em 6 meses</SelectItem>
-                      <SelectItem value="1-year">Em 1 ano</SelectItem>
-                      <SelectItem value="custom">Data personalizada</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Popover open={showCalendar} onOpenChange={setShowCalendar}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {targetDate ? format(targetDate, "PPP", { locale: ptBR }) : <span>Escolha uma data</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                      <Calendar
-                        mode="single"
-                        selected={targetDate}
-                        onSelect={(date) => {
-                          setTargetDate(date)
-                          setShowCalendar(false)
-                          setPredefinedPeriod("custom")
-                        }}
-                        initialFocus
-                        disabled={(date) => date <= new Date()}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                <Popover open={showCalendar} onOpenChange={setShowCalendar}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {targetDate ? format(targetDate, "dd/MM/yyyy") : <span>Escolha uma data</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="flex w-auto  p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={targetDate}
+                      onSelect={(date) => {
+                        setTargetDate(date)
+                        setShowCalendar(false)
+                      }}
+                      initialFocus
+                      disabled={(date) => date <= new Date()}
+                    />
+                    <div className="p-3 border-b">
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={() => handleQuickDateSelect(1)}
+                        >
+                          Em 1 mês
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={() => handleQuickDateSelect(2)}
+                        >
+                          Em 2 meses
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={() => handleQuickDateSelect(3)}
+                        >
+                          Em 3 meses
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={() => handleQuickDateSelect(6)}
+                        >
+                          Em 6 meses
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start col-span-2"
+                          onClick={() => handleQuickDateSelect(12)}
+                        >
+                          Em 1 ano
+                        </Button>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="grid gap-2">
                 <Label htmlFor="frequency-amount">Com qual frequência?</Label>
                 <Select value={frequency} onValueChange={(value) => setFrequency(value as FrequencyType)}>
                   <SelectTrigger id="frequency-amount">
-                    <SelectValue placeholder="Selecione a frequência" />
+                    <SelectValue placeholder="Selecione a frequência"/>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="daily">Diariamente</SelectItem>
@@ -336,7 +332,7 @@ export function GoalSimulation({ wallet }: GoalSimulationProps) {
             </div>
 
             <Button onClick={handleSimulateAmount} className="w-full">
-              <Calculator className="mr-2 h-4 w-4" />
+              <Calculator className="mr-2 h-4 w-4"/>
               Calcular Valor Necessário
             </Button>
           </TabsContent>

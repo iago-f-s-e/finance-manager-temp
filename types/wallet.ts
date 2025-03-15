@@ -7,6 +7,10 @@ export interface Wallet {
   icon?: string
   isDefault?: boolean
   createdAt: Date
+  goal?: {
+    value: number
+    createdAt: Date
+  }
 }
 
 export interface WalletTransfer {

@@ -23,7 +23,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {TransactionType} from "@/types/transaction";
+import type { TransactionType } from "@/types/transaction"
+import { Switch } from "@/components/ui/switch"
+import { ColorPicker } from "@/components/ui/color-picker"
+import { Progress } from "@/components/ui/progress"
+import { formatCurrency } from "@/lib/financial-utils"
 
 const walletFormSchema = z.object({
   name: z.string().min(2, {
@@ -37,6 +41,8 @@ const walletFormSchema = z.object({
     message: "Cor inválida. Use formato hexadecimal (ex: #FF5733).",
   }),
   icon: z.string(),
+  hasGoal: z.boolean().optional(),
+  goalValue: z.string().optional(),
 })
 
 const adjustmentFormSchema = z.object({
@@ -59,6 +65,7 @@ export function WalletForm({ wallet, onSubmit, onCancel }: WalletFormProps) {
   const [isAdjustmentDialogOpen, setIsAdjustmentDialogOpen] = useState(false)
   const [newBalance, setNewBalance] = useState<number>(0)
   const [oldBalance, setOldBalance] = useState<number>(0)
+  const [hasGoal, setHasGoal] = useState<boolean>(!!wallet?.goal)
   const addTransaction = useFinancialStore((state) => state.addTransaction)
 
   const defaultValues: Partial<WalletFormValues> = {
@@ -72,6 +79,8 @@ export function WalletForm({ wallet, onSubmit, onCancel }: WalletFormProps) {
           .toString(16)
           .padStart(6, "0"),
     icon: wallet?.icon || "wallet",
+    hasGoal: !!wallet?.goal,
+    goalValue: wallet?.goal ? handleInputMoneyMask(wallet.goal.value) : "R$ 0,00",
   }
 
   const form = useForm<WalletFormValues>({
@@ -94,6 +103,9 @@ export function WalletForm({ wallet, onSubmit, onCancel }: WalletFormProps) {
         setNewBalance(newBalanceValue)
         setOldBalance(wallet.balance)
       }
+      if (name === "hasGoal") {
+        setHasGoal(value.hasGoal || false)
+      }
     })
     return () => subscription.unsubscribe()
   }, [form, wallet])
@@ -115,6 +127,14 @@ export function WalletForm({ wallet, onSubmit, onCancel }: WalletFormProps) {
       color: data.color,
       icon: data.icon,
       createdAt: wallet?.createdAt || new Date(),
+    }
+
+    // Adicionar meta se estiver habilitada
+    if (data.hasGoal && data.goalValue) {
+      newWallet.goal = {
+        value: handleRemoveMoneyMask(data.goalValue),
+        createdAt: wallet?.goal?.createdAt || new Date(),
+      }
     }
 
     onSubmit(newWallet)
@@ -159,6 +179,14 @@ export function WalletForm({ wallet, onSubmit, onCancel }: WalletFormProps) {
       createdAt: wallet!.createdAt,
     }
 
+    // Adicionar meta se estiver habilitada
+    if (form.getValues("hasGoal") && form.getValues("goalValue")) {
+      newWallet.goal = {
+        value: handleRemoveMoneyMask(form.getValues("goalValue") || "R$ 0,00"),
+        createdAt: wallet?.goal?.createdAt || new Date(),
+      }
+    }
+
     // Fechar o diálogo e enviar a carteira atualizada
     setIsAdjustmentDialogOpen(false)
     onSubmit(newWallet)
@@ -174,6 +202,13 @@ export function WalletForm({ wallet, onSubmit, onCancel }: WalletFormProps) {
     ]
 
     return Icon ? <Icon className="h-5 w-5" /> : null
+  }
+
+  // Calcular progresso da meta
+  const calculateGoalProgress = () => {
+    if (!wallet || !wallet.goal) return 0
+    const progress = (wallet.balance / wallet.goal.value) * 100
+    return Math.min(progress, 100) // Limitar a 100%
   }
 
   return (
@@ -240,7 +275,7 @@ export function WalletForm({ wallet, onSubmit, onCancel }: WalletFormProps) {
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
-                    <div className="h-10 w-10 rounded-md border" style={{ backgroundColor: field.value }} />
+                    <ColorPicker color={field.value} onChange={(color) => field.onChange(color)} />
                   </div>
                   <FormMessage />
                 </FormItem>
@@ -285,6 +320,66 @@ export function WalletForm({ wallet, onSubmit, onCancel }: WalletFormProps) {
                 </FormItem>
               )}
             />
+          </div>
+
+          {/* Meta da carteira */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <FormField
+                control={form.control}
+                name="hasGoal"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={(checked) => {
+                          field.onChange(checked)
+                          setHasGoal(checked)
+                        }}
+                      />
+                    </FormControl>
+                    <FormLabel className="font-medium cursor-pointer">Definir meta para esta carteira</FormLabel>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {hasGoal && (
+              <FormField
+                control={form.control}
+                name="goalValue"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor da Meta</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="R$ 0,00"
+                        onChange={(e) => {
+                          e.target.value = handleInputMoneyMask(e.target.value)
+                          field.onChange(e)
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {wallet && wallet.goal && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Progresso da Meta</span>
+                  <span>
+                    {formatCurrency(wallet.balance)} de {formatCurrency(wallet.goal.value)} (
+                    {Math.round(calculateGoalProgress())}%)
+                  </span>
+                </div>
+                <Progress value={calculateGoalProgress()} className="h-2" />
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-2">

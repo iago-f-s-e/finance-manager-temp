@@ -1,11 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { PlusIcon } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,71 +12,85 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { useFinancialStore } from "@/lib/store"
 import type { Category } from "@/types/category"
-import type { TransactionType } from "@/types/transaction"
+import { ColorPicker } from "@/components/ui/color-picker"
 
-const categoryFormSchema = z.object({
+const formSchema = z.object({
   label: z.string().min(2, {
     message: "O nome deve ter pelo menos 2 caracteres.",
+  }),
+  value: z.string().min(2, {
+    message: "O valor deve ter pelo menos 2 caracteres.",
   }),
   color: z.string().regex(/^#([0-9A-F]{6})$/i, {
     message: "Cor inválida. Use formato hexadecimal (ex: #FF5733).",
   }),
 })
 
-type CategoryFormValues = z.infer<typeof categoryFormSchema>
-
 interface CategoryDialogProps {
-  type: TransactionType
-  onAddCategory: (category: Category) => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  category?: Category
+  onSubmit: (category: Category) => void
 }
 
-export function CategoryDialog({ type, onAddCategory }: CategoryDialogProps) {
-  const [open, setOpen] = useState(false)
+export function CategoryDialog({ open, onOpenChange, category, onSubmit }: CategoryDialogProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { categories } = useFinancialStore()
 
-  const form = useForm<CategoryFormValues>({
-    resolver: zodResolver(categoryFormSchema),
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      label: "",
+      label: category?.label || "",
+      value: category?.value || "",
       color:
+        category?.color ||
         "#" +
-        Math.floor(Math.random() * 16777215)
-          .toString(16)
-          .padStart(6, "0"),
+          Math.floor(Math.random() * 16777215)
+            .toString(16)
+            .padStart(6, "0"),
     },
   })
 
-  function handleSubmit(data: CategoryFormValues) {
-    const newCategory: Category = {
-      id: crypto.randomUUID(),
-      type,
-      value: data.label.toLowerCase().replace(/\s+/g, "_"),
-      label: data.label,
-      color: data.color,
+  function handleSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true)
+
+    // Verificar se já existe uma categoria com o mesmo valor
+    if (!category && categories.some((c) => c.value === values.value)) {
+      form.setError("value", {
+        type: "manual",
+        message: "Já existe uma categoria com este identificador.",
+      })
+      setIsSubmitting(false)
+      return
     }
 
-    onAddCategory(newCategory)
+    const newCategory: Category = {
+      id: category?.id || crypto.randomUUID(),
+      label: values.label,
+      value: values.value,
+      color: values.color,
+    }
+
+    onSubmit(newCategory)
+    setIsSubmitting(false)
+    onOpenChange(false)
     form.reset()
-    setOpen(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 gap-1">
-          <PlusIcon className="h-3.5 w-3.5" />
-          Nova Categoria
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Adicionar Categoria</DialogTitle>
+          <DialogTitle>{category ? "Editar" : "Adicionar"} Categoria</DialogTitle>
           <DialogDescription>
-            Crie uma nova categoria para {type === "income" ? "entradas" : "saídas"}.
+            {category
+              ? "Edite os detalhes da categoria selecionada."
+              : "Adicione uma nova categoria para organizar suas transações."}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -88,15 +100,32 @@ export function CategoryDialog({ type, onAddCategory }: CategoryDialogProps) {
               name="label"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome da Categoria</FormLabel>
+                  <FormLabel>Nome</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ex: Investimentos" {...field} />
+                    <Input placeholder="Ex: Alimentação" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
+            <FormField
+              control={form.control}
+              name="value"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Identificador</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Ex: food"
+                      {...field}
+                      disabled={!!category}
+                      title={category ? "O identificador não pode ser alterado" : undefined}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="color"
@@ -107,15 +136,19 @@ export function CategoryDialog({ type, onAddCategory }: CategoryDialogProps) {
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
-                    <div className="h-10 w-10 rounded-md border" style={{ backgroundColor: field.value }} />
+                    <ColorPicker color={field.value} onChange={(color) => field.onChange(color)} />
                   </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
             <DialogFooter>
-              <Button type="submit">Adicionar Categoria</Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {category ? "Atualizar" : "Adicionar"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

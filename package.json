@@ -68,6 +68,7 @@
     "zustand": "latest",
     "@vercel/speed-insights": "latest",
     "next-axiom": "latest",
+    "react-intl": "latest",
     "@vercel/analytics": "latest"
   },
   "devDependencies": {

@@ -15,7 +15,7 @@ import {
 import { WalletForm } from "@/components/wallet-form"
 import { WalletTransferForm } from "@/components/wallet-transfer-form"
 import { formatCurrency } from "@/lib/financial-utils"
-import { Edit, MoreHorizontal, Plus, Trash, ArrowRightLeft, History } from "lucide-react"
+import { Edit, MoreHorizontal, Plus, Trash, ArrowRightLeft, History, Target } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
@@ -26,6 +26,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Progress } from "@/components/ui/progress"
+import { GoalSimulation } from "@/components/goal-simulation"
 import type { Wallet, WalletTransfer } from "@/types/wallet"
 import * as LucideIcons from "lucide-react"
 
@@ -46,6 +48,7 @@ export default function WalletsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false)
+  const [isGoalSimulationDialogOpen, setIsGoalSimulationDialogOpen] = useState(false)
   const [selectedWallet, setSelectedWallet] = useState<Wallet | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("wallets")
@@ -155,6 +158,13 @@ export default function WalletsPage() {
   const getWalletName = (walletId: string) => {
     const wallet = wallets.find((w) => w.id === walletId)
     return wallet ? wallet.name : "Carteira desconhecida"
+  }
+
+  // Calcular progresso da meta
+  const calculateGoalProgress = (wallet: Wallet) => {
+    if (!wallet.goal) return 0
+    const progress = (wallet.balance / wallet.goal.value) * 100
+    return Math.min(progress, 100) // Limitar a 100%
   }
 
   return (
@@ -311,6 +321,32 @@ export default function WalletsPage() {
                   <div className="text-2xl font-bold" style={{ color: wallet.color }}>
                     {formatCurrency(wallet.balance)}
                   </div>
+
+                  {wallet.goal && (
+                    <div className="mt-2 space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="flex items-center gap-1">
+                          <Target className="h-3 w-3" />
+                          Meta: {formatCurrency(wallet.goal.value)}
+                        </span>
+                        <span>{Math.round(calculateGoalProgress(wallet))}%</span>
+                      </div>
+                      <Progress value={calculateGoalProgress(wallet)} className="h-1.5" />
+                      <div className="flex justify-end">
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => {
+                            setSelectedWallet(wallet)
+                            setIsGoalSimulationDialogOpen(true)
+                          }}
+                        >
+                          Simular meta
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -500,6 +536,24 @@ export default function WalletsPage() {
             <DialogDescription>Transfira valores entre suas carteiras</DialogDescription>
           </DialogHeader>
           <WalletTransferForm onSubmit={handleTransfer} onCancel={() => setIsTransferDialogOpen(false)} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Goal Simulation Dialog */}
+      <Dialog open={isGoalSimulationDialogOpen} onOpenChange={setIsGoalSimulationDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Simulação de Meta</DialogTitle>
+            <DialogDescription>
+              Simule quanto tempo falta ou quanto precisa guardar para atingir sua meta
+            </DialogDescription>
+          </DialogHeader>
+          {selectedWallet && <GoalSimulation wallet={selectedWallet} />}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsGoalSimulationDialogOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

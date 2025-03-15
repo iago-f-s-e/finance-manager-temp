@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Trash2, Edit, Plus, CreditCard, Wallet, ArrowRightLeft, AlertCircle } from "lucide-react"
+import { Trash2, Edit, Plus, CreditCard, Wallet, ArrowRightLeft, AlertCircle, Target } from "lucide-react"
 import { useFinancialStore } from "@/lib/store"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -32,6 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Progress } from "@/components/ui/progress"
 
 const walletFormSchema = z.object({
   name: z.string().min(2, {
@@ -190,6 +191,12 @@ export function WalletList() {
     { value: "credit-card", label: "Cartão de Crédito", icon: <CreditCard className="h-4 w-4" /> },
   ]
 
+  const calculateGoalProgress = (wallet: WalletType): number => {
+    if (!wallet.goal) return 0
+    const progress = (wallet.balance / wallet.goal.value) * 100
+    return Math.min(progress, 100) // Limitar a 100%
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -274,6 +281,18 @@ export function WalletList() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{handleInputMoneyMask(wallet.balance)}</div>
+              {wallet.goal && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="flex items-center gap-1">
+                      <Target className="h-3 w-3" />
+                      Meta: {handleInputMoneyMask(wallet.goal.value)}
+                    </span>
+                    <span>{Math.round(calculateGoalProgress(wallet))}%</span>
+                  </div>
+                  <Progress value={calculateGoalProgress(wallet)} className="h-1.5" />
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}

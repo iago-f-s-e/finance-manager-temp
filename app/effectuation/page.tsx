@@ -43,7 +43,7 @@ export default function EffectuationPage() {
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false)
 
   // Filtrar transações não efetivadas dentro do range de datas
-  const filteredTransactions = useMemo(() => {
+  const pendingTransactions = useMemo(() => {
     const transactions = activeType === "income" ? incomes : expenses
 
     return transactions
@@ -61,12 +61,41 @@ export default function EffectuationPage() {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
   }, [incomes, expenses, activeType, dateRange])
 
+  // Filtrar transações já efetivadas dentro do range de datas
+  const effectuatedTransactions = useMemo(() => {
+    const transactions = activeType === "income" ? incomes : expenses
+
+    return transactions
+      .filter((transaction) => {
+        const transactionDate = new Date(transaction.date)
+
+        // Verificar se está dentro do range de datas
+        const isInDateRange = transactionDate >= dateRange.from && transactionDate <= dateRange.to
+
+        // Verificar se está efetivada
+        const isEffectuated = transaction.isEffectuated
+
+        return isInDateRange && isEffectuated
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  }, [incomes, expenses, activeType, dateRange])
+
   // Calcular o valor total das transações selecionadas
   const totalSelectedValue = useMemo(() => {
-    return filteredTransactions
+    return pendingTransactions
       .filter((transaction) => selectedTransactions.includes(transaction.id))
       .reduce((sum, transaction) => sum + transaction.value, 0)
-  }, [filteredTransactions, selectedTransactions])
+  }, [pendingTransactions, selectedTransactions])
+
+  // Calcular o valor total das transações pendentes
+  const totalPendingValue = useMemo(() => {
+    return pendingTransactions.reduce((sum, transaction) => sum + transaction.value, 0)
+  }, [pendingTransactions])
+
+  // Calcular o valor total das transações efetivadas
+  const totalEffectuatedValue = useMemo(() => {
+    return effectuatedTransactions.reduce((sum, transaction) => sum + transaction.value, 0)
+  }, [effectuatedTransactions])
 
   // Função para alternar a seleção de uma transação
   const toggleTransactionSelection = (id: string) => {
@@ -77,10 +106,10 @@ export default function EffectuationPage() {
 
   // Função para selecionar todas as transações
   const selectAllTransactions = () => {
-    if (selectedTransactions.length === filteredTransactions.length) {
+    if (selectedTransactions.length === pendingTransactions.length) {
       setSelectedTransactions([])
     } else {
-      setSelectedTransactions(filteredTransactions.map((t) => t.id))
+      setSelectedTransactions(pendingTransactions.map((t) => t.id))
     }
   }
 
@@ -166,65 +195,106 @@ export default function EffectuationPage() {
         ))}
       </div>
 
+      {/* Resumo de valores */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Resumo do Período</CardTitle>
+          <CardDescription>
+            Valores totais para o período de {format(dateRange.from, "dd/MM/yyyy")} a{" "}
+            {format(dateRange.to, "dd/MM/yyyy")}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Pendentes</h3>
+              <p className="text-2xl font-bold" style={{ color: activeType === "income" ? "#10b981" : "#ef4444" }}>
+                {formatCurrency(totalPendingValue)}
+              </p>
+              <p className="text-sm text-muted-foreground">{pendingTransactions.length} transações</p>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Efetivadas</h3>
+              <p className="text-2xl font-bold" style={{ color: activeType === "income" ? "#10b981" : "#ef4444" }}>
+                {formatCurrency(totalEffectuatedValue)}
+              </p>
+              <p className="text-sm text-muted-foreground">{effectuatedTransactions.length} transações</p>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Total no Período</h3>
+              <p className="text-2xl font-bold" style={{ color: activeType === "income" ? "#10b981" : "#ef4444" }}>
+                {formatCurrency(totalPendingValue + totalEffectuatedValue)}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {pendingTransactions.length + effectuatedTransactions.length} transações
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Filtros e Controles */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Tabs value={activeType} onValueChange={(value) => setActiveType(value as TransactionType)}>
+          <TabsList>
+            <TabsTrigger value="expense">Saídas</TabsTrigger>
+            <TabsTrigger value="income">Entradas</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Período:</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="justify-start text-left font-normal">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(dateRange.from, "P", { locale: ptBR })} - {format(dateRange.to, "P", { locale: ptBR })}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={{
+                  from: dateRange.from,
+                  to: dateRange.to,
+                }}
+                onSelect={(range) => {
+                  if (range?.from && range?.to) {
+                    setDateRange({
+                      from: range.from,
+                      to: range.to,
+                    })
+                  }
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      {/* Transações Pendentes */}
       <Card>
         <CardHeader>
           <CardTitle>Transações Pendentes</CardTitle>
           <CardDescription>Selecione as transações que deseja efetivar</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <Tabs value={activeType} onValueChange={(value) => setActiveType(value as TransactionType)}>
-              <TabsList>
-                <TabsTrigger value="expense">Saídas</TabsTrigger>
-                <TabsTrigger value="income">Entradas</TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Período:</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="justify-start text-left font-normal">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {format(dateRange.from, "P", { locale: ptBR })} - {format(dateRange.to, "P", { locale: ptBR })}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="range"
-                    selected={{
-                      from: dateRange.from,
-                      to: dateRange.to,
-                    }}
-                    onSelect={(range) => {
-                      if (range?.from && range?.to) {
-                        setDateRange({
-                          from: range.from,
-                          to: range.to,
-                        })
-                      }
-                    }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-
-          {/* Lista de transações */}
+          {/* Lista de transações pendentes */}
           <div className="border rounded-md">
             <div className="flex items-center justify-between p-4 border-b">
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="select-all"
                   checked={
-                    selectedTransactions.length > 0 && selectedTransactions.length === filteredTransactions.length
+                    selectedTransactions.length > 0 && selectedTransactions.length === pendingTransactions.length
                   }
                   onCheckedChange={selectAllTransactions}
                 />
                 <label htmlFor="select-all" className="text-sm font-medium">
-                  Selecionar todas ({filteredTransactions.length})
+                  Selecionar todas ({pendingTransactions.length})
                 </label>
               </div>
 
@@ -239,13 +309,13 @@ export default function EffectuationPage() {
               </div>
             </div>
 
-            {filteredTransactions.length === 0 ? (
+            {pendingTransactions.length === 0 ? (
               <div className="p-8 text-center">
                 <p className="text-muted-foreground">Não há transações pendentes para o período selecionado</p>
               </div>
             ) : (
               <div className="divide-y">
-                {filteredTransactions.map((transaction) => (
+                {pendingTransactions.map((transaction) => (
                   <div key={transaction.id} className="flex items-center justify-between p-4 hover:bg-muted/50">
                     <div className="flex items-center gap-4">
                       <Checkbox
@@ -298,6 +368,75 @@ export default function EffectuationPage() {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Transações Efetivadas */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Transações Efetivadas</CardTitle>
+          <CardDescription>Transações já efetivadas no período selecionado</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {effectuatedTransactions.length === 0 ? (
+            <div className="p-8 text-center border rounded-md">
+              <p className="text-muted-foreground">Não há transações efetivadas para o período selecionado</p>
+            </div>
+          ) : (
+            <div className="border rounded-md divide-y">
+              {effectuatedTransactions.map((transaction) => (
+                <div key={transaction.id} className="flex items-center justify-between p-4 hover:bg-muted/50">
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="flex h-10 w-10 items-center justify-center rounded-full"
+                      style={{
+                        backgroundColor: activeType === "income" ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                        color: activeType === "income" ? "#10b981" : "#ef4444",
+                      }}
+                    >
+                      {activeType === "income" ? (
+                        <ArrowUpIcon className="h-5 w-5" />
+                      ) : (
+                        <ArrowDownIcon className="h-5 w-5" />
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{transaction.name}</p>
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>{format(new Date(transaction.date), "dd/MM/yyyy")}</span>
+                        <Badge
+                          variant="outline"
+                          className="flex items-center gap-1"
+                          style={{
+                            borderColor: getWalletColor(transaction.walletId),
+                            color: getWalletColor(transaction.walletId),
+                          }}
+                        >
+                          <WalletIcon className="h-3 w-3" />
+                          {getWalletName(transaction.walletId)}
+                        </Badge>
+                        {transaction.effectuatedAt && (
+                          <span className="text-xs">
+                            Efetivada em: {format(new Date(transaction.effectuatedAt), "dd/MM/yyyy")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="font-medium" style={{ color: activeType === "income" ? "#10b981" : "#ef4444" }}>
+                      {formatCurrency(transaction.value)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

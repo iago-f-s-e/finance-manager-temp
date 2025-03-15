@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { FinancialStoreProvider } from "@/lib/store-provider"
+import { MainNav } from "@/components/main-nav"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -23,7 +24,16 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <FinancialStoreProvider>
-            {children}
+            <div className="flex min-h-screen flex-col">
+              <header className="sticky top-0 z-40 border-b bg-background">
+                <div className="container flex h-16 items-center justify-between py-4">
+                  <div className="flex items-center gap-6">
+                    <MainNav />
+                  </div>
+                </div>
+              </header>
+              <main className="flex-1">{children}</main>
+            </div>
             <Toaster />
           </FinancialStoreProvider>
         </ThemeProvider>
